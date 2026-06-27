@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
+from .dashboard import router as dashboard_router
 from .dependencies import get_db_path
 from .errors import register_error_handlers
 from .routers import (
@@ -43,6 +44,7 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
     app.include_router(graph.router)
     app.include_router(intelligence.router)
     app.include_router(automation.router)
+    app.include_router(dashboard_router)
 
     if db_path is not None:
         resolved = Path(db_path)
