@@ -88,8 +88,6 @@ def _recurring_insights(risks: list[StoredMemory], context: AnalysisContext) -> 
     insights: list[Insight] = []
     for items in recurring_groups(risks).values():
         meetings = len({item.meeting_id for item in items})
-        if meetings < _RECUR_MIN:
-            continue
         sample = items[0]
         dates = sorted(d for d in (context.memory_date(m) for m in items) if d)
         span = days_between(dates[0], dates[-1]) if len(dates) > 1 else 0

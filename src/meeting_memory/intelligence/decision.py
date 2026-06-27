@@ -144,8 +144,6 @@ def _revisited_insights(decisions: list[StoredMemory], context: AnalysisContext)
     insights: list[Insight] = []
     for items in recurring_groups(decisions).values():
         meetings = len({item.meeting_id for item in items})
-        if meetings < _REVISIT_MIN:
-            continue
         sample = items[0]
         insights.append(
             Insight(

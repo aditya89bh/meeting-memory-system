@@ -137,9 +137,7 @@ def project_metrics(context: AnalysisContext) -> list[ProjectMetrics]:
         for edge in graph.incoming(node.node_id):
             if edge.relationship is RelationshipType.BLOCKS:
                 blocker_count += 1
-            source = graph.get_node(edge.source_id) if graph.has_node(edge.source_id) else None
-            if source is None:
-                continue
+            source = graph.get_node(edge.source_id)
             if source.node_type is EntityType.RISK:
                 risk_count += 1
             elif source.node_type is EntityType.DECISION:
