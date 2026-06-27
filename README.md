@@ -83,10 +83,16 @@ risks, assumptions, questions, and important facts.
   OpenAPI with Swagger UI and ReDoc, a `MeetingMemoryClient` SDK with identical
   local (in-process) and HTTP transports, and a lightweight server-rendered
   dashboard.
+- **A production-operations layer** with seeded benchmark datasets and a
+  reproducible benchmark runner, a deterministic replay engine, dependency-free
+  observability (counters/gauges/histograms/timers, JSON and Prometheus export),
+  CPU/memory profiling and slow-query detection, checksummed database backups and
+  logical snapshots with recovery validation, and Docker/Compose deployment.
 - **A command-line interface** with `parse`, `extract`, `import`, `list`, `show`,
   `meetings`, `stats`, `search`, `timeline`, `explain`, `graph`, `neighbors`,
   `path`, `export-graph`, `insights`, `metrics`, `recommendations`, `report`,
-  `import-dir`, `export`, `automate`, `jobs`, `schedule`, and `logs` commands
+  `import-dir`, `export`, `automate`, `jobs`, `schedule`, `logs`, `benchmark`,
+  `replay`, `backup`, `restore`, and `profile` commands
   that emit human or JSON output.
 - **100% test coverage**, fully type-checked (`mypy --strict`) and linted (`ruff`).
 
@@ -818,6 +824,50 @@ with Overview, Meetings, Search, Graph, Insights, Reports, and Jobs pages at
 [`docs/dashboard.md`](docs/dashboard.md), and the runnable
 [`examples/api/`](examples/api/) scripts.
 
+## Performance, observability, deployment & recovery (Phase 9)
+
+Phase 9 prepares the system for production without adding user-facing features.
+Everything stays deterministic, dependency-free, and backward compatible.
+
+- **Benchmark datasets** — seeded `small`/`medium`/`large`/`enterprise`
+  generators with multiple projects and people, recurring risks, evolving
+  decisions, long timelines, cross-meeting references, and thousands of memories.
+- **Replay engine** — reconstruct and replay the meeting timeline (all, by
+  project, by person, by date, or range) with step-by-step control and a speed
+  multiplier.
+- **Performance benchmarks** — measure import throughput, retrieval latency,
+  graph construction, intelligence generation, report rendering, API/SDK latency,
+  database size, and peak memory, producing JSON or text reports.
+- **Observability** — counters, gauges, histograms, and timers via a
+  `MetricsCollector`, plus `HealthSnapshot` and `SystemMetrics`, exported to JSON
+  and Prometheus text format (no `prometheus_client` dependency).
+- **Profiling** — CPU/memory profiling, pipeline stage timing, hot-path timing,
+  and slow-query detection built on `cProfile`/`tracemalloc`.
+- **Backup & recovery** — checksummed physical SQLite backups and portable,
+  checksummed logical snapshots, both validated via `PRAGMA integrity_check`.
+- **Deployment** — a multi-stage `Dockerfile`, `docker-compose.yml`, a
+  production Compose example, a health-check probe, a volume for the database,
+  environment-driven configuration, and a production startup script.
+
+```bash
+meeting-memory benchmark --dataset medium --iterations 3
+meeting-memory replay --db atlas.db --timeline
+meeting-memory metrics --db atlas.db --format prometheus
+meeting-memory backup  --db atlas.db -o atlas.bak
+meeting-memory restore --db restored.db atlas.bak
+meeting-memory profile --db atlas.db --operation intelligence
+
+# Container deployment
+docker build -t meeting-memory:latest .
+docker compose up -d
+curl localhost:8000/health
+```
+
+See [`docs/performance.md`](docs/performance.md),
+[`docs/deployment.md`](docs/deployment.md), [`docs/replay.md`](docs/replay.md),
+and [`docs/backup.md`](docs/backup.md), plus the runnable
+[`examples/ops/`](examples/ops/) scripts.
+
 ## Architecture overview
 
 The package follows a clean, layered structure under `src/meeting_memory/`:
@@ -841,10 +891,18 @@ meeting_memory/
 ├── api/           # Phase 8: FastAPI app, routers, schemas, dependencies,
 │                  #          middleware, errors, version, and the dashboard
 ├── sdk/           # Phase 8: MeetingMemoryClient (local + HTTP transports)
+├── benchmarks/    # Phase 9: deterministic datasets + performance benchmark runner
+├── replay/        # Phase 9: timeline reconstruction and replay sessions
+├── observability/ # Phase 9: metrics (JSON/Prometheus) + profiling utilities
+├── recovery/      # Phase 9: physical backups and logical snapshots
 ├── utils/         # Normalization and statistics helpers
 ├── exceptions/    # Exception hierarchy rooted at MeetingMemoryError
-└── cli.py         # Command-line entry point (service-backed; parse/.../automate)
+└── cli.py         # Command-line entry point (service-backed; parse/.../profile)
 ```
+
+Deployment artifacts live at the repository root: `Dockerfile`,
+`docker-compose.yml`, `.dockerignore`, and `scripts/` (production startup and
+health-check probe).
 
 Data flows in one direction:
 
@@ -875,6 +933,11 @@ SQLiteMemoryStore (+ graph) ──▶ connectors.export ──▶ file / stdout
 services.* ──▶ wrap every layer above into one orchestration surface
 CLI / api (FastAPI) / sdk (MeetingMemoryClient) / dashboard ──▶ services.*
               (one shared implementation; deterministic, SQLite-backed)
+benchmarks.generate_dataset ──▶ seeded transcripts ──▶ benchmarks.run_benchmarks
+              (import / retrieval / graph / intelligence / report timings)
+SQLiteMemoryStore ──▶ replay.ReplayEngine ──▶ ReplayTimeline / ReplaySession
+SQLiteMemoryStore ──▶ recovery.backup / export_snapshot ──▶ checksummed artifacts
+observability.MetricsCollector ──▶ JSON / Prometheus exposition
 ```
 
 - **Loading is decoupled from parsing.** The loader only reads and decodes a
@@ -896,6 +959,9 @@ ruff check .          # lint
 ruff format --check . # formatting check
 mypy src              # strict type checking
 pytest --cov          # run tests with coverage
+python -m build       # build the wheel/sdist
+docker build .        # build the container image
+docker compose config # validate the Compose file
 
 # Run the API locally and browse the docs/dashboard
 python examples/api/serve.py --db atlas.db --port 8000
