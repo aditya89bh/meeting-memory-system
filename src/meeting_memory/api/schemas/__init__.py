@@ -33,6 +33,8 @@ __all__ = [
     "InsightEvidenceSchema",
     "InsightListResponse",
     "InsightResponse",
+    "JobListResponse",
+    "LogListResponse",
     "MeetingListResponse",
     "MeetingMetricsSchema",
     "MeetingResponse",
@@ -453,3 +455,17 @@ class AutomationRunResponse(_Schema):
     def from_domain(cls, result: AutomationResult) -> AutomationRunResponse:
         """Build the schema from an automation result."""
         return cls.model_validate(result.to_dict())
+
+
+class JobListResponse(_Schema):
+    """A page of recorded automation runs."""
+
+    pagination: Pagination
+    items: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class LogListResponse(_Schema):
+    """A page of structured automation log records."""
+
+    pagination: Pagination
+    items: list[dict[str, Any]] = Field(default_factory=list)

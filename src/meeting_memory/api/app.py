@@ -8,7 +8,15 @@ from fastapi import FastAPI
 
 from .dependencies import get_db_path
 from .errors import register_error_handlers
-from .routers import graph, health, intelligence, meetings, memories, search
+from .routers import (
+    automation,
+    graph,
+    health,
+    intelligence,
+    meetings,
+    memories,
+    search,
+)
 from .version import API_DESCRIPTION, API_TITLE, API_VERSION
 
 
@@ -34,6 +42,7 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
     app.include_router(search.router)
     app.include_router(graph.router)
     app.include_router(intelligence.router)
+    app.include_router(automation.router)
 
     if db_path is not None:
         resolved = Path(db_path)
