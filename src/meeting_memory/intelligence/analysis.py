@@ -10,10 +10,10 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date
 
-from ..graph import slugify
-from ..storage import StoredMemory
-from .context import AnalysisContext
-from .models import InsightEvidence, InsightSeverity
+from ..graph import EntityType, RelationshipType, slugify
+from ..storage import MemoryStatus, StoredMemory
+from .context import AnalysisContext, owner_of
+from .models import InsightEvidence, InsightSeverity, PersonMetrics, ProjectMetrics
 
 
 def content_groups(memories: list[StoredMemory]) -> dict[str, list[StoredMemory]]:
@@ -123,12 +123,82 @@ def top_counter(counts: dict[str, int]) -> tuple[str | None, int]:
     return name, counts[name]
 
 
+def project_metrics(context: AnalysisContext) -> list[ProjectMetrics]:
+    """Per-project risk/decision/meeting/blocker counts from the graph.
+
+    Returns an empty list when no graph is attached to ``context``.
+    """
+    graph = context.graph
+    if graph is None:
+        return []
+    rows: list[ProjectMetrics] = []
+    for node in graph.list_nodes(node_types=frozenset({EntityType.PROJECT})):
+        risk_count = decision_count = meeting_count = blocker_count = 0
+        for edge in graph.incoming(node.node_id):
+            if edge.relationship is RelationshipType.BLOCKS:
+                blocker_count += 1
+            source = graph.get_node(edge.source_id) if graph.has_node(edge.source_id) else None
+            if source is None:
+                continue
+            if source.node_type is EntityType.RISK:
+                risk_count += 1
+            elif source.node_type is EntityType.DECISION:
+                decision_count += 1
+            elif source.node_type is EntityType.MEETING:
+                meeting_count += 1
+        rows.append(
+            ProjectMetrics(
+                project_id=node.node_id,
+                name=node.label,
+                risk_count=risk_count,
+                decision_count=decision_count,
+                meeting_count=meeting_count,
+                blocker_count=blocker_count,
+            )
+        )
+    return rows
+
+
+def person_metrics(context: AnalysisContext) -> list[PersonMetrics]:
+    """Per-person commitment, decision, and attendance counts."""
+    open_commit: dict[str, int] = {}
+    total_commit: dict[str, int] = {}
+    decisions: dict[str, int] = {}
+    attended: dict[str, int] = {}
+    for meeting in context.meetings:
+        for person in set(meeting.participants):
+            attended[person] = attended.get(person, 0) + 1
+    for memory in context.memories:
+        if memory.memory_type == "commitment":
+            owner = owner_of(memory)
+            if owner:
+                total_commit[owner] = total_commit.get(owner, 0) + 1
+                if memory.status is MemoryStatus.ACTIVE:
+                    open_commit[owner] = open_commit.get(owner, 0) + 1
+        elif memory.memory_type == "decision" and memory.speaker:
+            decisions[memory.speaker] = decisions.get(memory.speaker, 0) + 1
+
+    names = sorted(set(open_commit) | set(total_commit) | set(decisions) | set(attended))
+    return [
+        PersonMetrics(
+            name=name,
+            open_commitments=open_commit.get(name, 0),
+            total_commitments=total_commit.get(name, 0),
+            decisions_owned=decisions.get(name, 0),
+            meetings_attended=attended.get(name, 0),
+        )
+        for name in names
+    ]
+
+
 __all__ = [
     "chain_span_days",
     "content_groups",
     "days_between",
     "insight_id",
     "memory_evidence",
+    "person_metrics",
+    "project_metrics",
     "recurring_groups",
     "scale_severity",
     "supersession_chains",

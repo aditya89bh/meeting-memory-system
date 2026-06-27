@@ -142,7 +142,9 @@ class IntelligenceEngine:
         self, context: AnalysisContext
     ) -> tuple[list[ProjectMetrics], list[PersonMetrics]]:
         """Compute per-project and per-person metrics from context and graph."""
-        return _project_metrics(context), _person_metrics(context)
+        from .analysis import person_metrics, project_metrics
+
+        return project_metrics(context), person_metrics(context)
 
     def run_health(self, context: AnalysisContext) -> OrganizationalHealth:
         """Compose the organizational-health snapshot from metric providers."""
@@ -258,75 +260,6 @@ def _timestamp_days(start: str, end: str) -> float | None:
     except ValueError:
         return None
     return delta.total_seconds() / 86400.0
-
-
-def _person_metrics(context: AnalysisContext) -> list[PersonMetrics]:
-    """Per-person commitment, decision, and attendance counts."""
-    from .context import owner_of
-
-    open_commit: dict[str, int] = {}
-    total_commit: dict[str, int] = {}
-    decisions: dict[str, int] = {}
-    attended: dict[str, int] = {}
-    for meeting in context.meetings:
-        for person in set(meeting.participants):
-            attended[person] = attended.get(person, 0) + 1
-    for memory in context.memories:
-        if memory.memory_type == "commitment":
-            owner = owner_of(memory)
-            if owner:
-                total_commit[owner] = total_commit.get(owner, 0) + 1
-                if memory.status is MemoryStatus.ACTIVE:
-                    open_commit[owner] = open_commit.get(owner, 0) + 1
-        elif memory.memory_type == "decision" and memory.speaker:
-            decisions[memory.speaker] = decisions.get(memory.speaker, 0) + 1
-
-    names = sorted(set(open_commit) | set(total_commit) | set(decisions) | set(attended))
-    return [
-        PersonMetrics(
-            name=name,
-            open_commitments=open_commit.get(name, 0),
-            total_commitments=total_commit.get(name, 0),
-            decisions_owned=decisions.get(name, 0),
-            meetings_attended=attended.get(name, 0),
-        )
-        for name in names
-    ]
-
-
-def _project_metrics(context: AnalysisContext) -> list[ProjectMetrics]:
-    """Per-project risk/decision/meeting/blocker counts from the graph."""
-    from ..graph import EntityType, RelationshipType
-
-    graph = context.graph
-    if graph is None:
-        return []
-    metrics: list[ProjectMetrics] = []
-    for node in graph.list_nodes(node_types=frozenset({EntityType.PROJECT})):
-        risk_count = decision_count = meeting_count = blocker_count = 0
-        for edge in graph.incoming(node.node_id):
-            if edge.relationship is RelationshipType.BLOCKS:
-                blocker_count += 1
-            source = graph.get_node(edge.source_id) if graph.has_node(edge.source_id) else None
-            if source is None:
-                continue
-            if source.node_type is EntityType.RISK:
-                risk_count += 1
-            elif source.node_type is EntityType.DECISION:
-                decision_count += 1
-            elif source.node_type is EntityType.MEETING:
-                meeting_count += 1
-        metrics.append(
-            ProjectMetrics(
-                project_id=node.node_id,
-                name=node.label,
-                risk_count=risk_count,
-                decision_count=decision_count,
-                meeting_count=meeting_count,
-                blocker_count=blocker_count,
-            )
-        )
-    return metrics
 
 
 __all__ = ["IntelligenceEngine"]
