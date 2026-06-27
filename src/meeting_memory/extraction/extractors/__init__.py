@@ -8,9 +8,11 @@ pipeline uses it to build the active registry.
 from __future__ import annotations
 
 from .base import ExtractionContext, Extractor, PhraseExtractor, PhraseRule, make_memory_id
+from .commitment import CommitmentExtractor
 from .decision import DecisionExtractor
 
 __all__ = [
+    "CommitmentExtractor",
     "DecisionExtractor",
     "ExtractionContext",
     "Extractor",
@@ -25,4 +27,5 @@ def default_extractors() -> list[Extractor]:
     """Return one instance of every built-in extractor, in canonical order."""
     return [
         DecisionExtractor(),
+        CommitmentExtractor(),
     ]
