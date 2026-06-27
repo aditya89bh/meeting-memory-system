@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from .base import MemoryStore
 from .hashing import memory_content_hash, transcript_hash
+from .importer import ImportResult, import_meeting
 from .migrations import SCHEMA_VERSION
 from .models import (
     MemoryQuery,
@@ -26,6 +27,7 @@ from .sqlite_store import SQLiteMemoryStore
 
 __all__ = [
     "SCHEMA_VERSION",
+    "ImportResult",
     "MemoryQuery",
     "MemoryStatus",
     "MemoryStore",
@@ -34,6 +36,7 @@ __all__ = [
     "StoredEvidence",
     "StoredMeeting",
     "StoredMemory",
+    "import_meeting",
     "memory_content_hash",
     "persist_extraction",
     "transcript_hash",
