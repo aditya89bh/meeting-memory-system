@@ -22,6 +22,14 @@ risks, assumptions, questions, and important facts.
 > semantics, a transparent scoring model ranks the results, surrounding context is
 > assembled, and every match is explained. Still **deterministic** — no LLM APIs,
 > embeddings, vector databases, or external search engines.
+>
+> **Phase 5 — organizational graph.** Links meetings, memories, people, projects,
+> technologies, customers, risks, commitments, and decisions into a typed,
+> directed graph persisted in the same SQLite database. Entities and relationships
+> are extracted with fixed rules and vocabularies, repeated entities connect
+> meetings across time, and the graph supports traversal, shortest-path, lineage,
+> and JSON/Mermaid/DOT export. Still **deterministic** — no LLM APIs, embeddings,
+> vector databases, or external graph databases (Neo4j, etc.).
 
 ## Features
 
@@ -47,9 +55,12 @@ risks, assumptions, questions, and important facts.
   and metadata filtering, a transparent six-factor ranking model, temporal
   queries (`before`/`after`/`between`/`latest`/`oldest`/`timeline`), configurable
   context windows, and rule-based per-result explanations.
+- **Organizational memory graph** with deterministic entity and relationship
+  extraction, cross-meeting linking, traversal (`neighbors`/`related`/`find_path`/
+  `connected_components`), decision and risk lineage, and JSON/Mermaid/DOT export.
 - **A command-line interface** with `parse`, `extract`, `import`, `list`, `show`,
-  `meetings`, `stats`, `search`, `timeline`, and `explain` commands that emit
-  human or JSON output.
+  `meetings`, `stats`, `search`, `timeline`, `explain`, `graph`, `neighbors`,
+  `path`, and `export-graph` commands that emit human or JSON output.
 - **100% test coverage**, fully type-checked (`mypy --strict`) and linted (`ruff`).
 
 ## Installation
@@ -101,6 +112,12 @@ meeting-memory search --speaker Alice --type decision --db atlas.db
 meeting-memory search --type risk --status active --db atlas.db
 meeting-memory timeline --type risk --db atlas.db       # chronological history
 meeting-memory explain meeting1:decision:1 --db atlas.db  # why + context
+
+# Build and explore the organizational memory graph
+meeting-memory graph --db atlas.db                      # node/edge counts
+meeting-memory neighbors project:atlas --db atlas.db    # everything around a node
+meeting-memory path person:lena project:atlas --db atlas.db  # shortest path
+meeting-memory export-graph --db atlas.db --format mermaid    # diagram
 ```
 
 ### Library
@@ -496,6 +513,92 @@ strategy, query planner, retrieval pipeline, context assembly, and the planned
 semantic-search extension. Runnable search/timeline/explain examples live in
 [`examples/retrieval/`](examples/retrieval/).
 
+## Organizational memory graph (Phase 5)
+
+Phase 5 links everything in the store into a typed, directed graph. It is built
+deterministically from the stored memories — graph commands rebuild it
+idempotently first, so it always reflects the current data:
+
+```
+memories ──▶ entity extraction ──▶ relationship extraction ──▶ cross-meeting linking ──▶ graph
+```
+
+### Supported entities and relationships
+
+Node types: `meeting`, `memory`, `person`, `project`, `customer`, `technology`,
+`team`, `vendor`, `document`, and the memory primitives `decision`, `commitment`,
+`risk`, `question`, `assumption`, `fact`.
+
+Edge types: `mentions`, `assigned_to`, `relates_to`, `depends_on`, `supersedes`,
+`resolves`, `blocks`, `supports`, `references`, `discussed_in`, `owned_by`,
+`connected_to`.
+
+Entities are global nodes keyed by a slug, so a project (or customer, technology,
+…) repeated across meetings is the *same* node — that is what links meetings over
+time and answers "which meetings discussed Project Atlas?".
+
+### Graph traversal
+
+```bash
+meeting-memory graph --db atlas.db                       # summary counts
+meeting-memory neighbors project:atlas --db atlas.db --type meeting
+meeting-memory path person:lena project:atlas --db atlas.db
+```
+
+```text
+node: project:atlas  [project]  Atlas
+neighbors (3):
+  meeting:meeting1  [meeting]  Project Atlas Kickoff
+  meeting:meeting2  [meeting]  Project Atlas Weekly Sync
+  meeting:meeting3  [meeting]  Project Atlas Beta Review
+```
+
+The library exposes `neighbors`, `incoming`, `outgoing`, `related`,
+`related_memories`/`related_meetings`/`related_people`/`related_projects`,
+`find_path`, and `connected_components`, plus `decision_lineage`/`risk_lineage`
+that order a `SUPERSEDES`/`CONNECTED_TO` chain oldest-to-newest. Every traversal
+explores neighbours in a fixed sorted order, so output is reproducible.
+
+### Graph exports
+
+```bash
+meeting-memory export-graph --db atlas.db --format json
+meeting-memory export-graph --db atlas.db --format mermaid --type meeting,project
+meeting-memory export-graph --db atlas.db --format dot > atlas.dot
+```
+
+All three formats include node and edge labels and emit nodes/edges in sorted
+order for stable, diff-friendly output.
+
+### Library
+
+```python
+from meeting_memory.graph import GraphEngine, SQLiteGraphStore, build_graph
+from meeting_memory.storage import SQLiteMemoryStore
+
+with SQLiteMemoryStore("atlas.db") as memory_store:
+    graph_store = SQLiteGraphStore("atlas.db")
+    build_graph(memory_store, graph_store)        # idempotent
+
+engine = GraphEngine(graph_store)
+for meeting in engine.related_meetings("project:atlas"):
+    print(meeting.label)
+graph_store.close()
+```
+
+### Limitations
+
+- Entity extraction is **vocabulary- and rule-based** — projects/customers via
+  patterns like "Project X", technologies via a built-in lexicon, and any
+  configurable vocabulary. Unlisted entities phrased differently are not found.
+- Semantic edges (`resolves`, question/assumption ↔ decision) are derived from
+  **shared entities**, not meaning, so they are precise but not exhaustive.
+- Like the store, the graph is single-file SQLite for local/CLI use.
+
+See [`docs/graph.md`](docs/graph.md) for the architecture, schema, entity and
+relationship extraction rules, traversal, lineage, and future graph-reasoning
+extensions. Runnable graph examples live in [`examples/graph/`](examples/graph/).
+
 ## Architecture overview
 
 The package follows a clean, layered structure under `src/meeting_memory/`:
@@ -509,9 +612,11 @@ meeting_memory/
 │   └── extractors/  # One rule-based extractor per memory type
 ├── storage/       # Phase 3: SQLite store, registry, importer, lifecycle, dedup
 ├── retrieval/     # Phase 4: planner, engine, ranking, context, explanations
+├── graph/         # Phase 5: models, store, entity/relationship extraction,
+│                  #          cross-meeting linking, traversal, lineage, export
 ├── utils/         # Normalization and statistics helpers
 ├── exceptions/    # Exception hierarchy rooted at MeetingMemoryError
-└── cli.py         # Command-line entry point (parse + extract + import + search/...)
+└── cli.py         # Command-line entry point (parse + extract + import + search + graph/...)
 ```
 
 Data flows in one direction:
@@ -529,6 +634,9 @@ ExtractionResult ──▶ storage.persist_extraction ──▶ SQLiteMemoryStor
 SQLiteMemoryStore ──▶ query / lifecycle ──▶ StoredMemory records
 RetrievalQuery ──▶ retrieval.MemoryRetriever ──▶ RetrievalResult
               (plan ▶ filter ▶ rank ▶ order ▶ context + explain)
+SQLiteMemoryStore ──▶ graph.build_graph ──▶ SQLiteGraphStore (nodes + edges)
+              (entities ▶ relationships ▶ cross-meeting linking)
+SQLiteGraphStore ──▶ graph.GraphEngine ──▶ neighbors / paths / lineage / export
 ```
 
 - **Loading is decoupled from parsing.** The loader only reads and decodes a
