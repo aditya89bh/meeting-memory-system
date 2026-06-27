@@ -44,7 +44,7 @@ curl "http://127.0.0.1:8000/search?q=risk&limit=5"
 curl "http://127.0.0.1:8000/graph"
 
 # Intelligence report (markdown)
-curl "http://127.0.0.1:8000/intelligence/report?format=markdown"
+curl "http://127.0.0.1:8000/reports?format=markdown"
 ```
 
 ## Key endpoint groups
@@ -55,7 +55,7 @@ curl "http://127.0.0.1:8000/intelligence/report?format=markdown"
 | Memories | `GET /memories`, `GET /memories/{id}` |
 | Search | `GET /search` |
 | Graph | `GET /graph`, `GET /graph/neighbors`, `GET /graph/path` |
-| Intelligence | `GET /intelligence/insights`, `/metrics`, `/recommendations`, `/report` |
+| Intelligence | `GET /insights`, `GET /metrics`, `GET /recommendations`, `GET /reports` |
 | Automation | `POST /automation/run`, `GET /automation/jobs`, `GET /automation/logs` |
 
 ## The dashboard
