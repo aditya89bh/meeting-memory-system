@@ -116,9 +116,7 @@ def test_unknown_type_is_rejected(tmp_path: Path) -> None:
     assert excinfo.value.code == 2
 
 
-def test_types_ignores_empty_tokens(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_types_ignores_empty_tokens(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     path = _extract(tmp_path)
     assert main(["extract", str(path), "--types", "decision,", "--now", _NOW]) == 0
     payload = json.loads(capsys.readouterr().out)
