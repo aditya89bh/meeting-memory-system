@@ -70,10 +70,16 @@ risks, assumptions, questions, and important facts.
   (insight/metric/recommendation/report providers), deterministic decision,
   commitment, and risk analyses, organizational-health scoring, evidence-backed
   recommendations, and JSON/Markdown/plain-text reports.
+- **Connector framework & automation engine** with a connector registry, file
+  import connectors (text/JSON/Markdown/CSV, directory/recursive/batch/zip),
+  export connectors (JSON/Markdown/HTML/CSV/graph/summaries), declarative
+  YAML/JSON pipelines, a deterministic scheduler (once/hourly/daily/weekly/cron
+  subset with simulation), structured machine-readable logging, and job history.
 - **A command-line interface** with `parse`, `extract`, `import`, `list`, `show`,
   `meetings`, `stats`, `search`, `timeline`, `explain`, `graph`, `neighbors`,
-  `path`, `export-graph`, `insights`, `metrics`, `recommendations`, and `report`
-  commands that emit human or JSON output.
+  `path`, `export-graph`, `insights`, `metrics`, `recommendations`, `report`,
+  `import-dir`, `export`, `automate`, `jobs`, `schedule`, and `logs` commands
+  that emit human or JSON output.
 - **100% test coverage**, fully type-checked (`mypy --strict`) and linted (`ruff`).
 
 ## Installation
@@ -667,6 +673,91 @@ metric and insight definitions, recommendation rules, report generation, and
 future ML extension points. Runnable examples live in
 [`examples/intelligence/`](examples/intelligence/).
 
+## Connector framework & automation (Phase 7)
+
+Phase 7 wraps the whole pipeline in a deterministic **connector framework** so
+meeting data can be imported from many sources and organizational intelligence
+exported to many destinations, with declarative pipelines that chain the steps
+together. Like every earlier phase it is standard-library only: no LLM APIs, no
+external schedulers, no network access, and no credentials.
+
+```bash
+# Import every supported transcript in a directory (txt/json/markdown/csv)
+meeting-memory import-dir examples/history --db atlas.db --recursive
+
+# Preview an import without writing (dry-run), as JSON
+meeting-memory import-dir examples/history --db atlas.db --dry-run --json
+
+# Export organizational data in a chosen format (markdown/json/html/csv/graph/summaries)
+meeting-memory export --db atlas.db --format markdown --output report.md
+
+# Run a declarative pipeline (import -> graph -> intelligence -> export)
+meeting-memory automate examples/pipelines/daily.yaml --db atlas.db
+meeting-memory automate examples/pipelines/daily.yaml --dry-run
+
+# Inspect recorded runs and machine-readable logs
+meeting-memory jobs --db atlas.db
+meeting-memory logs --db atlas.db --limit 20
+
+# Simulate a schedule (no daemon): show the next run times
+meeting-memory schedule examples/pipelines/weekly.yaml --count 5
+```
+
+### What it provides
+
+- **Connector interfaces** — `ImportConnector`, `ExportConnector`, and
+  `AutomationConnector` all expose `metadata()`, `validate()`, `supports()`,
+  `execute()`, and `dry_run()`, discovered through a `ConnectorRegistry` and
+  driven by a `ConnectorManager` facade.
+- **Import connectors** — plain-text, JSON, Markdown, and CSV transcripts, plus
+  directory, recursive-directory, batch (explicit file list), and zip-archive
+  importers. Every importer reuses the existing parser and extraction pipeline
+  and reports per-file outcomes (imported / skipped-duplicate / failed).
+- **Export connectors** — JSON, Markdown, HTML, CSV, graph (JSON/Mermaid/DOT),
+  intelligence reports, and per-meeting summaries, written to a file or stdout.
+- **Automation engine** — an `AutomationEngine`/`JobRunner`/`PipelineExecutor`
+  runs `import → graph → intelligence → export` over a shared `ExecutionContext`,
+  with status aggregation and a `JobHistory` recorded beside the database.
+- **Scheduler** — deterministic `once`/`hourly`/`daily`/`weekly`/`manual`
+  frequencies and a five-field `cron` subset (ranges, steps, lists), with a
+  `simulate(...)` mode and no background daemon.
+- **Structured logging** — every stage emits a machine-readable record (stage,
+  connector, duration, items, warnings, errors, destination, correlation id) to
+  a JSON Lines sink, queryable through `meeting-memory logs`.
+- **Pipeline configuration** — declarative YAML or JSON pipelines, parsed by a
+  dependency-free YAML-subset reader and validated before execution.
+
+```yaml
+# examples/pipelines/daily.yaml
+name: daily-intelligence
+schedule:
+  frequency: daily
+steps:
+  - type: import
+    source: examples/history
+    recursive: true
+  - type: graph
+  - type: intelligence
+  - type: export
+    format: markdown
+    output: out/daily-report.md
+```
+
+### Limitations
+
+- Connectors are **deterministic and local**: the bundled set reads files and
+  writes reports — live SaaS sources (Slack, Zoom, Notion, Jira, GitHub) are
+  designed to plug into the same interfaces but are not implemented here.
+- The scheduler **computes** run times; it does not run a daemon. Trigger
+  `automate` from an external timer (cron/systemd) using the simulated times.
+- The YAML reader supports the **subset** needed for pipelines (block mappings
+  and sequences, scalars, comments), not the full YAML specification.
+
+See [`docs/connectors.md`](docs/connectors.md) for the connector interfaces,
+pipeline execution model, automation architecture, scheduler, configuration
+schema, and future SaaS connector extensions. Runnable examples live in
+[`examples/pipelines/`](examples/pipelines/).
+
 ## Architecture overview
 
 The package follows a clean, layered structure under `src/meeting_memory/`:
@@ -684,9 +775,11 @@ meeting_memory/
 │                  #          cross-meeting linking, traversal, lineage, export
 ├── intelligence/  # Phase 6: models, context, providers/registry, engine,
 │                  #          decision/commitment/risk/health, recommendations, report
+├── connectors/    # Phase 7: models, logging, base/registry/manager, importers,
+│                  #          exporters, scheduler, config, automation engine
 ├── utils/         # Normalization and statistics helpers
 ├── exceptions/    # Exception hierarchy rooted at MeetingMemoryError
-└── cli.py         # Command-line entry point (parse + extract + import + search + graph + insights/...)
+└── cli.py         # Command-line entry point (parse + extract + import + search + graph + insights + automate/...)
 ```
 
 Data flows in one direction:
@@ -709,6 +802,12 @@ SQLiteMemoryStore ──▶ graph.build_graph ──▶ SQLiteGraphStore (nodes 
 SQLiteGraphStore ──▶ graph.GraphEngine ──▶ neighbors / paths / lineage / export
 SQLiteMemoryStore (+ graph) ──▶ intelligence.IntelligenceEngine ──▶ InsightReport
               (context ▶ providers ▶ insights + metrics + recommendations ▶ render)
+sources ──▶ connectors.import ──▶ (parser ▶ extraction ▶ storage)
+              (text/json/markdown/csv, directory/recursive/batch/zip)
+AutomationJob ──▶ connectors.AutomationEngine ──▶ AutomationResult + JobHistory
+              (import ▶ graph ▶ intelligence ▶ export, with structured logs)
+SQLiteMemoryStore (+ graph) ──▶ connectors.export ──▶ file / stdout
+              (json/markdown/html/csv/graph/summaries)
 ```
 
 - **Loading is decoupled from parsing.** The loader only reads and decodes a
