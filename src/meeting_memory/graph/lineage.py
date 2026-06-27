@@ -32,10 +32,11 @@ def relationship_lineage(
     edge_by_pair: dict[tuple[str, str], GraphEdge] = {}
     for member in members:
         for edge in store.outgoing(member, relationships):
-            if edge.target_id in members:
-                older_of.setdefault(member, []).append(edge.target_id)
-                newer_of.setdefault(edge.target_id, []).append(member)
-                edge_by_pair[(member, edge.target_id)] = edge
+            # Every rel-connected target is in ``members`` (component is built over
+            # the same relationship in both directions), so no membership guard.
+            older_of.setdefault(member, []).append(edge.target_id)
+            newer_of.setdefault(edge.target_id, []).append(member)
+            edge_by_pair[(member, edge.target_id)] = edge
 
     newest = sorted(member for member in members if member not in newer_of)
     start = newest[0] if newest else sorted(members)[0]
