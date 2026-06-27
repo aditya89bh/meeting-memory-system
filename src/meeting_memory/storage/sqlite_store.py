@@ -8,17 +8,24 @@ all reads return rows in a stable order so results are reproducible.
 from __future__ import annotations
 
 import builtins
+import json
 import sqlite3
 from collections.abc import Iterable
 from pathlib import Path
 
-from ..exceptions import MemoryNotFoundError, StorageError
+from ..exceptions import (
+    DuplicateMeetingError,
+    MeetingNotFoundError,
+    MemoryNotFoundError,
+    StorageError,
+)
 from .base import MemoryStore
 from .migrations import apply_migrations
 from .models import (
     MemoryQuery,
     MemoryStatus,
     StoredEvidence,
+    StoredMeeting,
     StoredMemory,
 )
 
@@ -144,6 +151,81 @@ class SQLiteMemoryStore(MemoryStore):
         row = self._connection.execute(sql, params).fetchone()
         return int(row[0])
 
+    # -- meeting registry ------------------------------------------------------
+
+    def save_meeting(self, meeting: StoredMeeting) -> None:
+        if self.meeting_exists(meeting.meeting_id):
+            raise DuplicateMeetingError(f"meeting {meeting.meeting_id!r} already stored")
+        if self.find_meeting_by_hash(meeting.transcript_hash) is not None:
+            raise DuplicateMeetingError(
+                f"a meeting with transcript hash {meeting.transcript_hash} already stored"
+            )
+        try:
+            with self._connection:
+                self._connection.execute(
+                    """
+                    INSERT INTO meetings (
+                        meeting_id, title, date, source, duration_seconds,
+                        participants, transcript_hash, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        meeting.meeting_id,
+                        meeting.title,
+                        meeting.date,
+                        meeting.source,
+                        meeting.duration_seconds,
+                        json.dumps(list(meeting.participants)),
+                        meeting.transcript_hash,
+                        meeting.created_at,
+                    ),
+                )
+        except sqlite3.IntegrityError as exc:
+            raise DuplicateMeetingError(
+                f"could not store meeting {meeting.meeting_id!r}: {exc}"
+            ) from exc
+
+    def get_meeting(self, meeting_id: str) -> StoredMeeting:
+        row = self._connection.execute(
+            "SELECT * FROM meetings WHERE meeting_id = ?", (meeting_id,)
+        ).fetchone()
+        if row is None:
+            raise MeetingNotFoundError(f"no meeting with id {meeting_id!r}")
+        return _row_to_meeting(row)
+
+    def meeting_exists(self, meeting_id: str) -> bool:
+        row = self._connection.execute(
+            "SELECT 1 FROM meetings WHERE meeting_id = ?", (meeting_id,)
+        ).fetchone()
+        return row is not None
+
+    def find_meeting_by_hash(self, transcript_hash: str) -> StoredMeeting | None:
+        row = self._connection.execute(
+            "SELECT * FROM meetings WHERE transcript_hash = ?", (transcript_hash,)
+        ).fetchone()
+        return _row_to_meeting(row) if row is not None else None
+
+    def list_meetings(
+        self, *, limit: int | None = None, offset: int = 0
+    ) -> builtins.list[StoredMeeting]:
+        sql = (
+            "SELECT * FROM meetings ORDER BY date IS NULL, date ASC, created_at ASC, meeting_id ASC"
+        )
+        sql, params = _apply_limit(sql, [], limit, offset)
+        rows = self._connection.execute(sql, params).fetchall()
+        return [_row_to_meeting(row) for row in rows]
+
+    def delete_meeting(self, meeting_id: str) -> bool:
+        with self._connection:
+            for (memory_id,) in self._connection.execute(
+                "SELECT memory_id FROM memories WHERE meeting_id = ?", (meeting_id,)
+            ).fetchall():
+                self._delete_children(memory_id)
+            affected = self._connection.execute(
+                "DELETE FROM meetings WHERE meeting_id = ?", (meeting_id,)
+            )
+        return affected.rowcount > 0
+
     def close(self) -> None:
         self._connection.close()
 
@@ -241,6 +323,21 @@ class SQLiteMemoryStore(MemoryStore):
             metadata=metadata,
             evidence=evidence,
         )
+
+
+def _row_to_meeting(row: sqlite3.Row) -> StoredMeeting:
+    """Map a ``meetings`` row to a :class:`StoredMeeting`."""
+    participants = tuple(json.loads(row["participants"]))
+    return StoredMeeting(
+        meeting_id=row["meeting_id"],
+        transcript_hash=row["transcript_hash"],
+        created_at=row["created_at"],
+        title=row["title"],
+        date=row["date"],
+        source=row["source"],
+        duration_seconds=row["duration_seconds"],
+        participants=participants,
+    )
 
 
 def _apply_limit(

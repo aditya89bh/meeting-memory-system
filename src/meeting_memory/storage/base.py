@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from types import TracebackType
 
-from .models import MemoryQuery, StoredMemory
+from .models import MemoryQuery, StoredMeeting, StoredMemory
 
 
 class MemoryStore(ABC):
@@ -55,6 +55,34 @@ class MemoryStore(ABC):
     @abstractmethod
     def count(self, query: MemoryQuery | None = None) -> int:
         """Count memories, optionally restricted by ``query``."""
+
+    # -- meeting registry ------------------------------------------------------
+
+    @abstractmethod
+    def save_meeting(self, meeting: StoredMeeting) -> None:
+        """Persist a meeting. Raises ``DuplicateMeetingError`` on a repeat."""
+
+    @abstractmethod
+    def get_meeting(self, meeting_id: str) -> StoredMeeting:
+        """Return a meeting or raise ``MeetingNotFoundError``."""
+
+    @abstractmethod
+    def meeting_exists(self, meeting_id: str) -> bool:
+        """Return whether a meeting with ``meeting_id`` is stored."""
+
+    @abstractmethod
+    def find_meeting_by_hash(self, transcript_hash: str) -> StoredMeeting | None:
+        """Return the meeting with a matching transcript hash, if any."""
+
+    @abstractmethod
+    def list_meetings(
+        self, *, limit: int | None = None, offset: int = 0
+    ) -> builtins.list[StoredMeeting]:
+        """Return stored meetings in deterministic order."""
+
+    @abstractmethod
+    def delete_meeting(self, meeting_id: str) -> bool:
+        """Delete a meeting (cascading to its memories); return success."""
 
     @abstractmethod
     def close(self) -> None:
