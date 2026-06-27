@@ -10,6 +10,7 @@ No LLM APIs, embeddings, vector databases, or external search engines are used.
 
 from __future__ import annotations
 
+from .context import ContextAssembler
 from .engine import MemoryRetriever
 from .models import (
     ContextUtterance,
@@ -27,6 +28,7 @@ from .ranking import DEFAULT_WEIGHTS, RankingWeights, ScoreComponents, score_mem
 
 __all__ = [
     "DEFAULT_WEIGHTS",
+    "ContextAssembler",
     "ContextUtterance",
     "ContextWindow",
     "ExplanationReason",

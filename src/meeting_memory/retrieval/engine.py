@@ -11,6 +11,7 @@ from __future__ import annotations
 import dataclasses
 
 from ..storage import MemoryStore, StoredMeeting, StoredMemory
+from .context import ContextAssembler
 from .models import (
     RankedMemory,
     RetrievalFilter,
@@ -35,10 +36,12 @@ class MemoryRetriever:
         *,
         planner: QueryPlanner | None = None,
         weights: RankingWeights | None = None,
+        assembler: ContextAssembler | None = None,
     ) -> None:
         self._store = store
         self._planner = planner or QueryPlanner()
         self._weights = weights or RankingWeights()
+        self._assembler = assembler or ContextAssembler()
 
     def retrieve(self, query: RetrievalQuery) -> RetrievalResult:
         """Plan, filter, rank, order, and paginate a retrieval query."""
@@ -52,6 +55,7 @@ class MemoryRetriever:
         ]
         ranked = self._order(ranked, query.order)
         page = self._paginate(ranked, query.offset, query.limit)
+        page = [self._with_context(item, query.context_size) for item in page]
         stats = RetrievalStats(
             candidates=len(ranked),
             returned=len(page),
@@ -164,6 +168,10 @@ class MemoryRetriever:
         if limit is None:
             return ranked[offset:]
         return ranked[offset : offset + limit]
+
+    def _with_context(self, item: RankedMemory, context_size: int) -> RankedMemory:
+        context = self._assembler.assemble(item.memory, item.meeting, context_size)
+        return dataclasses.replace(item, context=context)
 
 
 def _recency_map(
