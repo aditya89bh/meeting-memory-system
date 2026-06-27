@@ -75,6 +75,14 @@ risks, assumptions, questions, and important facts.
   export connectors (JSON/Markdown/HTML/CSV/graph/summaries), declarative
   YAML/JSON pipelines, a deterministic scheduler (once/hourly/daily/weekly/cron
   subset with simulation), structured machine-readable logging, and job history.
+- **A reusable platform layer** built on one shared service layer that the CLI,
+  REST API, Python SDK, and web dashboard all call: a typed FastAPI application
+  (health/version, meetings, memories, search, graph, intelligence, automation),
+  request/response schemas with structured errors and pagination, observability
+  middleware (correlation ids, timing, version headers, structured logs),
+  OpenAPI with Swagger UI and ReDoc, a `MeetingMemoryClient` SDK with identical
+  local (in-process) and HTTP transports, and a lightweight server-rendered
+  dashboard.
 - **A command-line interface** with `parse`, `extract`, `import`, `list`, `show`,
   `meetings`, `stats`, `search`, `timeline`, `explain`, `graph`, `neighbors`,
   `path`, `export-graph`, `insights`, `metrics`, `recommendations`, `report`,
@@ -93,6 +101,9 @@ source .venv/bin/activate
 
 # Install the package (add the dev extra for tests/linting/type-checking)
 pip install -e ".[dev]"
+
+# To run the REST API / dashboard or the SDK over HTTP, add the api/sdk extras
+pip install -e ".[api,sdk]"
 ```
 
 ## Quick start
@@ -758,6 +769,55 @@ pipeline execution model, automation architecture, scheduler, configuration
 schema, and future SaaS connector extensions. Runnable examples live in
 [`examples/pipelines/`](examples/pipelines/).
 
+## REST API, Python SDK & web dashboard (Phase 8)
+
+Phase 8 turns the system into a reusable platform. Every capability is exposed
+through one shared **service layer** (`MeetingService`, `MemoryService`,
+`RetrievalService`, `GraphService`, `IntelligenceService`, `AutomationService`,
+`ExportService`) that the CLI, REST API, SDK, and dashboard all call — no
+duplicated logic.
+
+```bash
+# Serve the API (Swagger UI at /docs, ReDoc at /redoc, dashboard at /dashboard)
+python examples/api/serve.py --db atlas.db --port 8000
+
+# Or with uvicorn directly (uses the MEETING_MEMORY_DB env var for the database)
+MEETING_MEMORY_DB=atlas.db uvicorn meeting_memory.api.app:app --port 8000
+```
+
+Key endpoints: `GET /health`, `GET /version`, `POST /meetings/import`,
+`GET /meetings`, `GET /meetings/{id}`, `GET /memories`, `GET /memories/{id}`,
+`GET /search`, `GET /graph`, `GET /graph/neighbors`, `GET /graph/path`,
+`GET /insights`, `GET /metrics`, `GET /recommendations`, `GET /reports`, and
+`POST /automation/run` (plus `/automation/jobs` and `/automation/logs`). Every
+response is typed; failures return a structured `ErrorResponse` with a
+correlation id, and each response carries `X-Correlation-ID`, `X-API-Version`,
+and `X-Process-Time-Ms` headers.
+
+The **Python SDK** offers one method per capability with two interchangeable
+transports — a local in-process mode and an HTTP mode — that share the same
+surface:
+
+```python
+from meeting_memory.sdk import MeetingMemoryClient
+
+# Local (in-process, no server) — runs the same routers and services
+with MeetingMemoryClient.local("atlas.db") as client:
+    client.import_directory("examples/history", recursive=True)
+    hits = client.search("postgres")
+    report = client.report(fmt="markdown")
+
+# HTTP (against a running server) — identical method surface
+with MeetingMemoryClient.connect("http://127.0.0.1:8000") as client:
+    insights = client.insights()
+```
+
+The **dashboard** is a lightweight, server-rendered UI (no build step, no auth)
+with Overview, Meetings, Search, Graph, Insights, Reports, and Jobs pages at
+`/dashboard`. See [`docs/api.md`](docs/api.md), [`docs/sdk.md`](docs/sdk.md),
+[`docs/dashboard.md`](docs/dashboard.md), and the runnable
+[`examples/api/`](examples/api/) scripts.
+
 ## Architecture overview
 
 The package follows a clean, layered structure under `src/meeting_memory/`:
@@ -777,9 +837,13 @@ meeting_memory/
 │                  #          decision/commitment/risk/health, recommendations, report
 ├── connectors/    # Phase 7: models, logging, base/registry/manager, importers,
 │                  #          exporters, scheduler, config, automation engine
+├── services/      # Phase 8: shared service layer wrapping every capability
+├── api/           # Phase 8: FastAPI app, routers, schemas, dependencies,
+│                  #          middleware, errors, version, and the dashboard
+├── sdk/           # Phase 8: MeetingMemoryClient (local + HTTP transports)
 ├── utils/         # Normalization and statistics helpers
 ├── exceptions/    # Exception hierarchy rooted at MeetingMemoryError
-└── cli.py         # Command-line entry point (parse + extract + import + search + graph + insights + automate/...)
+└── cli.py         # Command-line entry point (service-backed; parse/.../automate)
 ```
 
 Data flows in one direction:
@@ -808,6 +872,9 @@ AutomationJob ──▶ connectors.AutomationEngine ──▶ AutomationResult +
               (import ▶ graph ▶ intelligence ▶ export, with structured logs)
 SQLiteMemoryStore (+ graph) ──▶ connectors.export ──▶ file / stdout
               (json/markdown/html/csv/graph/summaries)
+services.* ──▶ wrap every layer above into one orchestration surface
+CLI / api (FastAPI) / sdk (MeetingMemoryClient) / dashboard ──▶ services.*
+              (one shared implementation; deterministic, SQLite-backed)
 ```
 
 - **Loading is decoupled from parsing.** The loader only reads and decodes a
@@ -829,6 +896,9 @@ ruff check .          # lint
 ruff format --check . # formatting check
 mypy src              # strict type checking
 pytest --cov          # run tests with coverage
+
+# Run the API locally and browse the docs/dashboard
+python examples/api/serve.py --db atlas.db --port 8000
 ```
 
 ## License
