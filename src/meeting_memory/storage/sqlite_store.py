@@ -11,6 +11,7 @@ import builtins
 import json
 import sqlite3
 from collections.abc import Iterable
+from datetime import datetime, timezone
 from pathlib import Path
 
 from ..exceptions import (
@@ -225,6 +226,27 @@ class SQLiteMemoryStore(MemoryStore):
                 "DELETE FROM meetings WHERE meeting_id = ?", (meeting_id,)
             )
         return affected.rowcount > 0
+
+    # -- lifecycle -------------------------------------------------------------
+
+    def set_status(
+        self,
+        memory_id: str,
+        status: MemoryStatus,
+        *,
+        superseded_by: str | None = None,
+        now: datetime | None = None,
+    ) -> StoredMemory:
+        stamp = (now if now is not None else datetime.now(timezone.utc)).isoformat()
+        with self._connection:
+            affected = self._connection.execute(
+                "UPDATE memories SET status = ?, superseded_by = ?, updated_at = ? "
+                "WHERE memory_id = ?",
+                (status.value, superseded_by, stamp, memory_id),
+            )
+            if affected.rowcount == 0:
+                raise MemoryNotFoundError(f"no memory with id {memory_id!r}")
+        return self.get(memory_id)
 
     def close(self) -> None:
         self._connection.close()

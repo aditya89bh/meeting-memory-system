@@ -12,6 +12,7 @@ from __future__ import annotations
 import builtins
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from datetime import datetime
 from types import TracebackType
 
 from .models import MemoryQuery, MemoryStatus, StoredMeeting, StoredMemory
@@ -143,6 +144,43 @@ class MemoryStore(ABC):
     ) -> builtins.list[StoredMemory]:
         """Return memories from meetings held between two dates (inclusive)."""
         return self.query(MemoryQuery(date_from=start, date_to=end, limit=limit))
+
+    # -- lifecycle -------------------------------------------------------------
+
+    @abstractmethod
+    def set_status(
+        self,
+        memory_id: str,
+        status: MemoryStatus,
+        *,
+        superseded_by: str | None = None,
+        now: datetime | None = None,
+    ) -> StoredMemory:
+        """Set a memory's lifecycle status and return the updated record."""
+
+    def archive(self, memory_id: str, *, now: datetime | None = None) -> StoredMemory:
+        """Move a memory to the ``ARCHIVED`` state."""
+        return self.set_status(memory_id, MemoryStatus.ARCHIVED, now=now)
+
+    def resolve(self, memory_id: str, *, now: datetime | None = None) -> StoredMemory:
+        """Move a memory (e.g. a commitment or open loop) to ``RESOLVED``."""
+        return self.set_status(memory_id, MemoryStatus.RESOLVED, now=now)
+
+    def mark_deleted(self, memory_id: str, *, now: datetime | None = None) -> StoredMemory:
+        """Soft-delete a memory by moving it to ``DELETED``."""
+        return self.set_status(memory_id, MemoryStatus.DELETED, now=now)
+
+    def restore(self, memory_id: str, *, now: datetime | None = None) -> StoredMemory:
+        """Return a memory to the ``ACTIVE`` state."""
+        return self.set_status(memory_id, MemoryStatus.ACTIVE, now=now)
+
+    def supersede(
+        self, memory_id: str, by_memory_id: str, *, now: datetime | None = None
+    ) -> StoredMemory:
+        """Mark a memory as ``SUPERSEDED`` by a newer one."""
+        return self.set_status(
+            memory_id, MemoryStatus.SUPERSEDED, superseded_by=by_memory_id, now=now
+        )
 
     @abstractmethod
     def close(self) -> None:
