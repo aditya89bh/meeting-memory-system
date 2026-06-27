@@ -10,6 +10,7 @@ No LLM APIs, embeddings, vector databases, or external search engines are used.
 
 from __future__ import annotations
 
+from .engine import MemoryRetriever
 from .models import (
     ContextUtterance,
     ContextWindow,
@@ -27,6 +28,7 @@ __all__ = [
     "ContextUtterance",
     "ContextWindow",
     "ExplanationReason",
+    "MemoryRetriever",
     "PlannerVocabulary",
     "QueryPlanner",
     "RankedMemory",
