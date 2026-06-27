@@ -18,8 +18,9 @@ from datetime import datetime, timedelta
 from ..exceptions import ScheduleError
 from .models import Schedule, ScheduleFrequency
 
-# Upper bound on the per-call minute search for cron (impossible specs raise).
-_MAX_CRON_ITERATIONS = 1_000_000
+# Search horizon for cron: any valid spec recurs within a few years (Feb 29 is
+# the widest gap at 4 years), so an unmatched spec beyond this is impossible.
+_MAX_CRON_HORIZON_DAYS = 366 * 5
 
 _FIELD_BOUNDS: tuple[tuple[int, int], ...] = (
     (0, 59),  # minute
@@ -132,7 +133,8 @@ def cron_next(expression: str, after: datetime) -> datetime:
     """Return the first minute strictly after ``after`` matching ``expression``."""
     spec = parse_cron(expression)
     candidate = after.replace(second=0, microsecond=0) + timedelta(minutes=1)
-    for _ in range(_MAX_CRON_ITERATIONS):
+    limit = after + timedelta(days=_MAX_CRON_HORIZON_DAYS)
+    while candidate <= limit:
         if candidate.month not in spec.month:
             candidate = _start_of_next_month(candidate)
             continue
