@@ -11,6 +11,7 @@ from .assumption import AssumptionExtractor
 from .base import ExtractionContext, Extractor, PhraseExtractor, PhraseRule, make_memory_id
 from .commitment import CommitmentExtractor
 from .decision import DecisionExtractor
+from .fact import FactExtractor
 from .open_loop import OpenLoopExtractor
 from .question import QuestionExtractor
 from .risk import RiskExtractor
@@ -21,6 +22,7 @@ __all__ = [
     "DecisionExtractor",
     "ExtractionContext",
     "Extractor",
+    "FactExtractor",
     "OpenLoopExtractor",
     "PhraseExtractor",
     "PhraseRule",
@@ -40,4 +42,5 @@ def default_extractors() -> list[Extractor]:
         RiskExtractor(),
         AssumptionExtractor(),
         QuestionExtractor(),
+        FactExtractor(),
     ]
