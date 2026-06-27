@@ -88,6 +88,12 @@ class BackupManager:
                 )
 
         self.db.parent.mkdir(parents=True, exist_ok=True)
+        # Replace the destination outright so recovery works even when the live
+        # database is corrupt (online backup cannot write into a broken file).
+        for suffix in ("", "-wal", "-shm"):
+            stale = Path(f"{self.db}{suffix}")
+            if stale.exists():
+                stale.unlink()
         source = sqlite3.connect(source_path)
         try:
             dest = sqlite3.connect(self.db)
