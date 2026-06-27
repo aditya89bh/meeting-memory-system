@@ -11,11 +11,26 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from . import __version__
+from .connectors import (
+    AutomationEngine,
+    ExportRequest,
+    ImportRequest,
+    JobHistory,
+    JsonlFileLogSink,
+    StructuredLogger,
+    default_manager,
+    default_registry,
+    load_pipeline,
+    read_logs,
+    simulate,
+    utc_now,
+)
 from .exceptions import MeetingMemoryError
 from .extraction import ExtractionConfig, MemoryType, extract_memories
 from .graph import (
@@ -285,6 +300,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_retrieval_commands(subcommands)
     _add_graph_commands(subcommands)
     _add_intelligence_commands(subcommands)
+    _add_connector_commands(subcommands)
     return parser
 
 
@@ -1020,6 +1036,254 @@ def _handle_report(args: argparse.Namespace) -> int:
         print(f"Wrote report to {args.output}")
     else:
         print(rendered, end="" if rendered.endswith("\n") else "\n")
+    return 0
+
+
+def _logs_path(db: Path) -> Path:
+    """Return the structured-log JSON Lines path beside a database."""
+    return db.with_name(db.name + ".logs.jsonl")
+
+
+def _jobs_path(db: Path) -> Path:
+    """Return the job-history JSON Lines path beside a database."""
+    return db.with_name(db.name + ".jobs.jsonl")
+
+
+def _cli_logger(db: Path) -> StructuredLogger:
+    """Build a logger that writes structured records beside the database."""
+    return StructuredLogger(
+        sink=JsonlFileLogSink(_logs_path(db)),
+        clock=time.monotonic,
+        now=utc_now,
+    )
+
+
+def _add_connector_commands(
+    subcommands: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
+    """Register the connector, automation, scheduling, and logging subcommands."""
+    import_dir_cmd = subcommands.add_parser(
+        "import-dir",
+        help="Import every supported transcript in a directory.",
+        description="Import a directory of transcripts (txt/json/markdown/csv).",
+    )
+    import_dir_cmd.add_argument("path", type=Path, help="Directory of transcripts to import.")
+    _add_db_argument(import_dir_cmd)
+    import_dir_cmd.add_argument(
+        "--recursive", action="store_true", help="Recurse into subdirectories."
+    )
+    import_dir_cmd.add_argument(
+        "--pattern", default="*", help="Glob pattern for matching files (default: *)."
+    )
+    import_dir_cmd.add_argument(
+        "--limit", type=int, default=None, help="Import at most this many files."
+    )
+    import_dir_cmd.add_argument(
+        "--dry-run", action="store_true", help="Parse and count without writing."
+    )
+    import_dir_cmd.add_argument("--json", action="store_true", help="Emit the summary as JSON.")
+    import_dir_cmd.set_defaults(handler=_handle_import_dir)
+
+    export_choices = sorted(default_registry().export_formats())
+    export_cmd = subcommands.add_parser(
+        "export",
+        help="Export organizational data to a destination.",
+        description="Export reports, memories, graphs, or summaries in various formats.",
+    )
+    _add_db_argument(export_cmd)
+    export_cmd.add_argument(
+        "--format",
+        choices=export_choices,
+        default="markdown",
+        help="Export format (default: markdown).",
+    )
+    export_cmd.add_argument(
+        "-o", "--output", type=Path, default=None, help="Write the export to this file."
+    )
+    export_cmd.add_argument(
+        "--dry-run", action="store_true", help="Render without writing the destination."
+    )
+    export_cmd.add_argument("--json", action="store_true", help="Emit the result as JSON.")
+    export_cmd.set_defaults(handler=_handle_export)
+
+    automate_cmd = subcommands.add_parser(
+        "automate",
+        help="Run a declarative pipeline (YAML or JSON).",
+        description="Validate and run an import -> graph -> intelligence -> export pipeline.",
+    )
+    automate_cmd.add_argument("config", type=Path, help="Pipeline configuration file.")
+    _add_db_argument(automate_cmd)
+    automate_cmd.add_argument(
+        "--dry-run", action="store_true", help="Run the pipeline without writing."
+    )
+    automate_cmd.add_argument("--json", action="store_true", help="Emit the result as JSON.")
+    automate_cmd.set_defaults(handler=_handle_automate)
+
+    jobs_cmd = subcommands.add_parser(
+        "jobs",
+        help="List recorded automation runs.",
+        description="Show the history of automation runs recorded beside the database.",
+    )
+    _add_db_argument(jobs_cmd)
+    jobs_cmd.add_argument("--limit", type=int, default=None, help="Show at most this many runs.")
+    jobs_cmd.add_argument("--json", action="store_true", help="Emit the history as JSON.")
+    jobs_cmd.set_defaults(handler=_handle_jobs)
+
+    schedule_cmd = subcommands.add_parser(
+        "schedule",
+        help="Show upcoming run times for a pipeline schedule.",
+        description="Simulate the next run times for a pipeline's schedule (no daemon).",
+    )
+    schedule_cmd.add_argument("config", type=Path, help="Pipeline configuration file.")
+    schedule_cmd.add_argument(
+        "--after",
+        type=_parse_iso_datetime,
+        default=None,
+        metavar="ISO8601",
+        help="Compute runs after this time (default: now).",
+    )
+    schedule_cmd.add_argument(
+        "--count", type=int, default=5, help="Number of upcoming runs to show (default: 5)."
+    )
+    schedule_cmd.add_argument("--json", action="store_true", help="Emit the schedule as JSON.")
+    schedule_cmd.set_defaults(handler=_handle_schedule)
+
+    logs_cmd = subcommands.add_parser(
+        "logs",
+        help="Show structured connector/automation logs.",
+        description="Read machine-readable logs recorded beside the database.",
+    )
+    _add_db_argument(logs_cmd)
+    logs_cmd.add_argument("--correlation", default=None, help="Filter logs by correlation id.")
+    logs_cmd.add_argument("--limit", type=int, default=None, help="Show at most this many records.")
+    logs_cmd.add_argument("--json", action="store_true", help="Emit logs as JSON.")
+    logs_cmd.set_defaults(handler=_handle_logs)
+
+
+def _handle_import_dir(args: argparse.Namespace) -> int:
+    """Execute the ``import-dir`` subcommand."""
+    logger = _cli_logger(args.db)
+    manager = default_manager()
+    request = ImportRequest(
+        source=str(args.path),
+        recursive=args.recursive,
+        pattern=args.pattern,
+        dry_run=args.dry_run,
+        limit=args.limit,
+    )
+    if args.dry_run:
+        result = manager.dry_run_import(request, logger=logger)
+    else:
+        with SQLiteMemoryStore(args.db) as store:
+            result = manager.import_source(request, store, logger=logger)
+    if args.json:
+        _print_json(result.to_dict())
+    else:
+        print("\n".join(result.summary_lines()))
+    return 0
+
+
+def _handle_export(args: argparse.Namespace) -> int:
+    """Execute the ``export`` subcommand."""
+    logger = _cli_logger(args.db)
+    manager = default_manager()
+    request = ExportRequest(
+        fmt=args.format,
+        destination=str(args.output) if args.output is not None else None,
+        dry_run=args.dry_run,
+    )
+    with SQLiteMemoryStore(args.db) as store:
+        graph_store = SQLiteGraphStore(args.db)
+        try:
+            build_graph(store, graph_store)
+            result = manager.export(request, store, graph_store=graph_store, logger=logger)
+        finally:
+            graph_store.close()
+    if args.json:
+        _print_json(result.to_dict())
+    elif result.destination is not None or args.dry_run:
+        print("\n".join(result.summary_lines()))
+    else:
+        content = result.content or ""
+        print(content, end="" if content.endswith("\n") else "\n")
+    return 0
+
+
+def _handle_automate(args: argparse.Namespace) -> int:
+    """Execute the ``automate`` subcommand."""
+    engine = AutomationEngine(
+        history=JobHistory(_jobs_path(args.db)),
+        log_sink=JsonlFileLogSink(_logs_path(args.db)),
+        clock=time.monotonic,
+        now=utc_now,
+    )
+    result = engine.run_file(args.config, db=args.db, dry_run=args.dry_run)
+    if args.json:
+        _print_json(result.to_dict())
+    else:
+        print("\n".join(result.summary_lines()))
+    return 1 if result.status.value == "failure" else 0
+
+
+def _handle_jobs(args: argparse.Namespace) -> int:
+    """Execute the ``jobs`` subcommand."""
+    records = JobHistory(_jobs_path(args.db)).list(limit=args.limit)
+    if args.json:
+        _print_json(records)
+        return 0
+    if not records:
+        print("No automation runs recorded.")
+        return 0
+    for record in records:
+        stages = record.get("stages", [])
+        count = len(stages) if isinstance(stages, list) else 0
+        print(
+            f"{record['started_at']}  {record['job']}  [{record['status']}]  "
+            f"{count} stages  {record['correlation_id']}"
+        )
+    return 0
+
+
+def _handle_schedule(args: argparse.Namespace) -> int:
+    """Execute the ``schedule`` subcommand."""
+    job = load_pipeline(args.config)
+    after = args.after if args.after is not None else datetime.now(timezone.utc)
+    runs = simulate(job.schedule, start=after, count=args.count)
+    if args.json:
+        _print_json(
+            {
+                "job": job.name,
+                "frequency": job.schedule.frequency.value,
+                "runs": [run.isoformat() for run in runs],
+            }
+        )
+        return 0
+    print(f"job: {job.name}")
+    print(f"frequency: {job.schedule.frequency.value}")
+    if not runs:
+        print("No upcoming runs (manual schedule or already elapsed).")
+    else:
+        for run in runs:
+            print(run.isoformat())
+    return 0
+
+
+def _handle_logs(args: argparse.Namespace) -> int:
+    """Execute the ``logs`` subcommand."""
+    records = read_logs(_logs_path(args.db), correlation_id=args.correlation, limit=args.limit)
+    if args.json:
+        _print_json(records)
+        return 0
+    if not records:
+        print("No logs recorded.")
+        return 0
+    for record in records:
+        stage = record.get("stage") or "-"
+        connector = record.get("connector")
+        suffix = f" ({connector})" if connector else ""
+        print(
+            f"[{record['level']}] {record['correlation_id']} {stage}{suffix}: {record['message']}"
+        )
     return 0
 
 
