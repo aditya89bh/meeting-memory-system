@@ -52,8 +52,7 @@ def test_enum_str_and_orderings() -> None:
     assert str(RecommendationCategory.DECISION) == "decision"
     assert SEVERITY_ORDER[InsightSeverity.CRITICAL] > SEVERITY_ORDER[InsightSeverity.INFO]
     assert (
-        PRIORITY_ORDER[RecommendationPriority.URGENT]
-        > PRIORITY_ORDER[RecommendationPriority.LOW]
+        PRIORITY_ORDER[RecommendationPriority.URGENT] > PRIORITY_ORDER[RecommendationPriority.LOW]
     )
 
 

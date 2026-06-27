@@ -65,9 +65,7 @@ def make_memory(
     )
 
 
-def load_store(
-    meetings: list[StoredMeeting], memories: list[StoredMemory]
-) -> SQLiteMemoryStore:
+def load_store(meetings: list[StoredMeeting], memories: list[StoredMemory]) -> SQLiteMemoryStore:
     """Return an in-memory store populated with the given meetings and memories."""
     store = SQLiteMemoryStore(":memory:")
     for meeting in meetings:
