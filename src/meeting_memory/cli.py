@@ -11,12 +11,14 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tempfile
 import time
 from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
 from . import __version__
+from .benchmarks import DATASET_PRESETS, get_preset, run_benchmarks, write_dataset
 from .connectors import (
     JsonlFileLogSink,
     StructuredLogger,
@@ -37,8 +39,12 @@ from .intelligence import (
     AnalysisFilters,
     InsightReport,
     InsightType,
+    OrganizationalHealth,
 )
+from .observability import MetricsCollector, SystemMetrics, profile_cpu, profile_memory
 from .parser import MeetingParser, validate_meeting
+from .recovery import BackupManager, export_snapshot, import_snapshot
+from .replay import ReplayEngine, ReplayFilter, ReplayResult, ReplayTimeline
 from .retrieval import (
     ContextWindow,
     RankedMemory,
@@ -291,6 +297,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_graph_commands(subcommands)
     _add_intelligence_commands(subcommands)
     _add_connector_commands(subcommands)
+    _add_ops_commands(subcommands)
     return parser
 
 
@@ -825,6 +832,15 @@ def _add_intelligence_commands(
     _add_db_argument(metrics_cmd)
     _add_filter_arguments(metrics_cmd)
     metrics_cmd.add_argument("--json", action="store_true", help="Emit metrics as JSON.")
+    metrics_cmd.add_argument(
+        "--format",
+        choices=["text", "json", "prometheus"],
+        default="text",
+        help="Output format (default: text). 'prometheus' adds runtime/system metrics.",
+    )
+    metrics_cmd.add_argument(
+        "-o", "--output", type=Path, default=None, help="Write metrics to this file."
+    )
     metrics_cmd.set_defaults(handler=_handle_metrics)
 
     rec_cmd = subcommands.add_parser(
@@ -895,9 +911,20 @@ def _handle_metrics(args: argparse.Namespace) -> int:
     report = _build_report(args)
     health = report.health
 
-    if args.json:
-        _print_json(health.to_dict())
+    fmt = "json" if args.json else args.format
+    if fmt == "prometheus":
+        text = _metrics_to_prometheus(health, args.db)
+        _write_or_print(text, args.output)
         return 0
+    if fmt == "json":
+        payload = health.to_dict()
+        if args.output is not None:
+            args.output.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
+            print(f"Wrote metrics to {args.output}")
+        else:
+            _print_json(payload)
+        return 0
+
     print(f"Reference date: {health.reference_date or 'n/a'}")
     print(f"Overall health: {health.overall:.4f}")
     print("Scores:")
@@ -1249,6 +1276,337 @@ def _emit(payload: dict[str, object], *, indent: int, output: Path | None) -> No
         output.write_text(text + "\n", encoding="utf-8")
     else:
         print(text)
+
+
+def _positive_int(value: str) -> int:
+    """Argparse type that accepts only integers greater than or equal to one."""
+    number = int(value)
+    if number < 1:
+        raise argparse.ArgumentTypeError("value must be >= 1")
+    return number
+
+
+def _add_ops_commands(subcommands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    """Register the Phase 9 production-operations subcommands."""
+    bench_cmd = subcommands.add_parser(
+        "benchmark",
+        help="Run reproducible performance benchmarks over a seeded dataset.",
+        description="Generate a deterministic dataset and benchmark the core operations.",
+    )
+    bench_cmd.add_argument(
+        "--dataset",
+        choices=sorted(DATASET_PRESETS),
+        default="small",
+        help="Benchmark dataset size (default: small).",
+    )
+    bench_cmd.add_argument(
+        "--iterations",
+        type=_positive_int,
+        default=1,
+        help="Number of iterations per benchmark (default: 1).",
+    )
+    bench_cmd.add_argument("--json", action="store_true", help="Emit the report as JSON.")
+    bench_cmd.add_argument("-o", "--output", type=Path, default=None, help="Write the report here.")
+    bench_cmd.set_defaults(handler=_handle_benchmark)
+
+    replay_cmd = subcommands.add_parser(
+        "replay",
+        help="Replay stored meetings in chronological order.",
+        description="Reconstruct and replay the meeting timeline, optionally filtered.",
+    )
+    _add_db_argument(replay_cmd)
+    replay_cmd.add_argument("--project", default=None, help="Only replay this project.")
+    replay_cmd.add_argument("--person", default=None, help="Only replay meetings with this person.")
+    replay_cmd.add_argument("--date", default=None, help="Only replay meetings on this date.")
+    replay_cmd.add_argument(
+        "--from", dest="date_from", default=None, help="Earliest meeting date (inclusive)."
+    )
+    replay_cmd.add_argument(
+        "--to", dest="date_to", default=None, help="Latest meeting date (inclusive)."
+    )
+    replay_cmd.add_argument(
+        "--speed", type=float, default=1.0, help="Replay speed multiplier (default: 1.0)."
+    )
+    replay_cmd.add_argument(
+        "--step-delay",
+        type=float,
+        default=0.0,
+        help="Base seconds to wait between steps before scaling by --speed.",
+    )
+    replay_cmd.add_argument(
+        "--timeline", action="store_true", help="Print the reconstructed timeline instead of a run."
+    )
+    replay_cmd.add_argument("--json", action="store_true", help="Emit output as JSON.")
+    replay_cmd.add_argument("-o", "--output", type=Path, default=None, help="Write output here.")
+    replay_cmd.set_defaults(handler=_handle_replay)
+
+    backup_cmd = subcommands.add_parser(
+        "backup",
+        help="Back up the database (physical copy or logical snapshot).",
+        description="Create a checksummed backup or a portable JSON snapshot.",
+    )
+    _add_db_argument(backup_cmd)
+    backup_cmd.add_argument(
+        "-o", "--output", type=Path, required=True, help="Destination backup/snapshot path."
+    )
+    backup_cmd.add_argument(
+        "--snapshot", action="store_true", help="Write a logical JSON snapshot instead of a copy."
+    )
+    backup_cmd.add_argument("--json", action="store_true", help="Emit the manifest as JSON.")
+    backup_cmd.set_defaults(handler=_handle_backup)
+
+    restore_cmd = subcommands.add_parser(
+        "restore",
+        help="Restore the database from a backup or snapshot.",
+        description="Restore a checksummed backup or import a logical JSON snapshot.",
+    )
+    _add_db_argument(restore_cmd)
+    restore_cmd.add_argument("input", type=Path, help="Backup/snapshot file to restore from.")
+    restore_cmd.add_argument(
+        "--snapshot", action="store_true", help="Treat the input as a logical JSON snapshot."
+    )
+    restore_cmd.add_argument(
+        "--no-verify", action="store_true", help="Skip integrity/checksum verification."
+    )
+    restore_cmd.add_argument("--json", action="store_true", help="Emit the report as JSON.")
+    restore_cmd.set_defaults(handler=_handle_restore)
+
+    profile_cmd = subcommands.add_parser(
+        "profile",
+        help="Profile CPU and memory for a core operation.",
+        description="Run an operation under cProfile and tracemalloc and report hot paths.",
+    )
+    _add_db_argument(profile_cmd)
+    profile_cmd.add_argument(
+        "--operation",
+        choices=["import", "search", "graph", "intelligence", "report"],
+        default="intelligence",
+        help="Operation to profile (default: intelligence).",
+    )
+    profile_cmd.add_argument(
+        "--dataset",
+        choices=sorted(DATASET_PRESETS),
+        default="small",
+        help="Dataset to import when profiling 'import' (default: small).",
+    )
+    profile_cmd.add_argument(
+        "--top", type=_positive_int, default=10, help="Number of hot entries to show (default: 10)."
+    )
+    profile_cmd.add_argument("--json", action="store_true", help="Emit the profile as JSON.")
+    profile_cmd.add_argument("-o", "--output", type=Path, default=None, help="Write output here.")
+    profile_cmd.set_defaults(handler=_handle_profile)
+
+
+def _write_or_print(text: str, output: Path | None) -> None:
+    """Write ``text`` to ``output`` (newline-terminated) or print it to stdout."""
+    if output is not None:
+        suffix = "" if text.endswith("\n") else "\n"
+        output.write_text(text + suffix, encoding="utf-8")
+        print(f"Wrote output to {output}")
+    else:
+        print(text)
+
+
+def _metrics_to_prometheus(health: OrganizationalHealth, db: Path) -> str:
+    """Render organizational-health, store, and system metrics as Prometheus text."""
+    collector = MetricsCollector()
+    collector.gauge("meeting_memory_health_overall").set(health.overall)
+    for key, value in health.scores.items():
+        collector.gauge(f"meeting_memory_health_score_{key}").set(value)
+
+    stats = MeetingService(db).stats()
+    collector.gauge("meeting_memory_meetings_total").set(stats.meetings)
+    collector.gauge("meeting_memory_memories_total").set(stats.memories)
+    for memory_type, count in stats.by_type.items():
+        collector.gauge(f"meeting_memory_memories_type_{memory_type}").set(count)
+
+    system = SystemMetrics.capture()
+    collector.gauge("meeting_memory_process_max_rss_bytes").set(system.max_rss_bytes)
+    collector.gauge("meeting_memory_process_user_cpu_seconds").set(system.user_cpu_seconds)
+    collector.gauge("meeting_memory_process_threads").set(system.thread_count)
+    return collector.to_prometheus()
+
+
+def _handle_benchmark(args: argparse.Namespace) -> int:
+    """Execute the ``benchmark`` subcommand."""
+    report = run_benchmarks(get_preset(args.dataset), iterations=args.iterations)
+    if args.json:
+        _write_or_print(json.dumps(report.to_dict(), indent=2, ensure_ascii=False), args.output)
+    else:
+        _write_or_print(report.render_text(), args.output)
+    return 0
+
+
+def _render_replay_timeline(timeline: ReplayTimeline) -> str:
+    """Render a reconstructed replay timeline as readable text."""
+    start, end = timeline.date_range
+    lines = [
+        f"Timeline: {timeline.filter.describe()}",
+        f"  meetings={timeline.meeting_count} memories={timeline.memory_count} "
+        f"range={start or '-'}..{end or '-'}",
+    ]
+    for event in timeline.events:
+        lines.append(
+            f"  [{event.index + 1:>3}] {event.meeting.date or '-'}  "
+            f"{event.meeting.title or event.meeting.meeting_id}  "
+            f"(+{len(event.memories)}, total {event.cumulative_memories})"
+        )
+    return "\n".join(lines)
+
+
+def _render_replay_result(result: ReplayResult) -> str:
+    """Render a completed replay run as readable text."""
+    lines = [
+        f"Replay: {result.timeline.filter.describe()}",
+        f"  steps={result.steps_played} meetings={result.timeline.meeting_count} "
+        f"memories={result.memories_played} speed={result.speed}",
+    ]
+    for memory_type in sorted(result.final_by_type):
+        lines.append(f"  {memory_type}: {result.final_by_type[memory_type]}")
+    return "\n".join(lines)
+
+
+def _handle_replay(args: argparse.Namespace) -> int:
+    """Execute the ``replay`` subcommand."""
+    flt = ReplayFilter(
+        project=args.project,
+        person=args.person,
+        date=args.date,
+        date_from=args.date_from,
+        date_to=args.date_to,
+    )
+    engine = ReplayEngine(args.db)
+    if args.timeline:
+        timeline = engine.timeline(flt)
+        if args.json:
+            _write_or_print(
+                json.dumps(timeline.to_dict(), indent=2, ensure_ascii=False), args.output
+            )
+        else:
+            _write_or_print(_render_replay_timeline(timeline), args.output)
+        return 0
+
+    result = engine.replay(flt, speed=args.speed, step_delay=args.step_delay)
+    if args.json:
+        _write_or_print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False), args.output)
+    else:
+        _write_or_print(_render_replay_result(result), args.output)
+    return 0
+
+
+def _handle_backup(args: argparse.Namespace) -> int:
+    """Execute the ``backup`` subcommand."""
+    if args.snapshot:
+        snapshot = export_snapshot(args.db, args.output)
+        payload = {
+            "type": "snapshot",
+            "output": str(args.output),
+            "meetings": len(snapshot.meetings),
+            "memories": len(snapshot.memories),
+            "schema_version": snapshot.schema_version,
+            "checksum": snapshot.checksum,
+        }
+        if args.json:
+            _print_json(payload)
+        else:
+            print(
+                f"Wrote snapshot to {args.output} "
+                f"({payload['meetings']} meetings, {payload['memories']} memories)"
+            )
+            print(f"checksum: {snapshot.checksum}")
+        return 0
+
+    manifest = BackupManager(args.db).backup(args.output)
+    if args.json:
+        _print_json(manifest.to_dict())
+    else:
+        print(
+            f"Backed up {manifest.meetings} meetings / {manifest.memories} memories "
+            f"to {manifest.backup_path}"
+        )
+        print(f"checksum: {manifest.checksum}")
+    return 0
+
+
+def _handle_restore(args: argparse.Namespace) -> int:
+    """Execute the ``restore`` subcommand."""
+    verify = not args.no_verify
+    if args.snapshot:
+        report = import_snapshot(args.input, args.db, verify=verify)
+    else:
+        report = BackupManager(args.db).restore(args.input, verify=verify)
+    if args.json:
+        _print_json(report.to_dict())
+    else:
+        print(
+            f"Restored: ok={report.ok} meetings={report.meetings} "
+            f"memories={report.memories} integrity={report.integrity}"
+        )
+    return 0
+
+
+def _profile_search(db: Path) -> object:
+    """Profiling target: a representative ranked retrieval query."""
+    return RetrievalService(db).search(RetrievalQuery(text="risk", limit=20))
+
+
+def _profile_graph(db: Path) -> object:
+    """Profiling target: build and summarise the knowledge graph."""
+    return GraphService(db).summary()
+
+
+def _profile_intelligence(db: Path) -> object:
+    """Profiling target: generate the full intelligence report."""
+    return IntelligenceService(db).report(AnalysisFilters())
+
+
+def _profile_report(db: Path) -> object:
+    """Profiling target: render the intelligence report to markdown."""
+    service = IntelligenceService(db)
+    return service.render(service.report(AnalysisFilters()), "markdown")
+
+
+def _profile_import(db: Path, data_dir: Path) -> object:
+    """Profiling target: import a generated dataset."""
+    return MeetingService(db).import_path(data_dir, recursive=True)
+
+
+def _handle_profile(args: argparse.Namespace) -> int:
+    """Execute the ``profile`` subcommand."""
+    operation = args.operation
+    if operation == "import":
+        with tempfile.TemporaryDirectory(prefix="mm-profile-") as tmp:
+            data_dir = Path(tmp) / "data"
+            write_dataset(get_preset(args.dataset), data_dir)
+            db_path = Path(tmp) / "profile.db"
+            _, cpu = profile_cpu(_profile_import, db_path, data_dir, top=args.top)
+            _, memory = profile_memory(_profile_import, db_path, data_dir, top=args.top)
+    else:
+        targets = {
+            "search": _profile_search,
+            "graph": _profile_graph,
+            "intelligence": _profile_intelligence,
+            "report": _profile_report,
+        }
+        target = targets[operation]
+        _, cpu = profile_cpu(target, args.db, top=args.top)
+        _, memory = profile_memory(target, args.db, top=args.top)
+
+    payload = {"operation": operation, "cpu": cpu.to_dict(), "memory": memory.to_dict()}
+    if args.json:
+        _write_or_print(json.dumps(payload, indent=2, ensure_ascii=False), args.output)
+        return 0
+
+    lines = [
+        f"Profile: {operation}",
+        f"  cpu total: {cpu.total_seconds:.6f}s",
+        f"  memory peak: {memory.peak_bytes} bytes",
+        "  hot functions:",
+    ]
+    for entry in cpu.entries:
+        lines.append(f"    {entry.cumulative_seconds:.6f}s  {entry.calls:>6}x  {entry.function}")
+    _write_or_print("\n".join(lines), args.output)
+    return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
