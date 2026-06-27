@@ -36,9 +36,7 @@ def search(
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> SearchResponse:
     """Run a deterministic ranked retrieval query and return scored results."""
-    memory_types = (
-        frozenset(member.value for member in memory_type) if memory_type else frozenset()
-    )
+    memory_types = frozenset(member.value for member in memory_type) if memory_type else frozenset()
     query = RetrievalQuery(
         text=q.strip() if q and q.strip() else None,
         memory_types=memory_types,
