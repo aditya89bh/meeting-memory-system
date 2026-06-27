@@ -18,7 +18,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import __version__
-from .benchmarks import DATASET_PRESETS, get_preset, run_benchmarks, write_dataset
+from .benchmarks import (
+    DATASET_PRESETS,
+    get_preset,
+    run_benchmarks,
+    write_dataset,
+    write_report_charts,
+)
 from .connectors import (
     JsonlFileLogSink,
     StructuredLogger,
@@ -1438,6 +1444,13 @@ def _add_ops_commands(subcommands: argparse._SubParsersAction[argparse.ArgumentP
     )
     bench_cmd.add_argument("--json", action="store_true", help="Emit the report as JSON.")
     bench_cmd.add_argument("-o", "--output", type=Path, default=None, help="Write the report here.")
+    bench_cmd.add_argument(
+        "--charts",
+        type=Path,
+        default=None,
+        metavar="DIR",
+        help="Render per-operation SVG charts into this directory.",
+    )
     bench_cmd.set_defaults(handler=_handle_benchmark)
 
     replay_cmd = subcommands.add_parser(
@@ -1565,6 +1578,10 @@ def _handle_benchmark(args: argparse.Namespace) -> int:
         _write_or_print(json.dumps(report.to_dict(), indent=2, ensure_ascii=False), args.output)
     else:
         _write_or_print(report.render_text(), args.output)
+    if args.charts is not None:
+        written = write_report_charts(report, args.charts)
+        for path in written:
+            print(f"chart: {path}")
     return 0
 
 
