@@ -19,6 +19,17 @@ from . import __version__
 from .exceptions import MeetingMemoryError
 from .extraction import ExtractionConfig, MemoryType, extract_memories
 from .parser import MeetingParser, validate_meeting
+from .retrieval import (
+    ContextAssembler,
+    ContextWindow,
+    MemoryRetriever,
+    RankedMemory,
+    RankingWeights,
+    RetrievalFilter,
+    RetrievalQuery,
+    explain_match,
+    score_components,
+)
 from .storage import (
     MemoryQuery,
     MemoryStatus,
@@ -190,6 +201,7 @@ def build_parser() -> argparse.ArgumentParser:
     extract_cmd.set_defaults(handler=_handle_extract)
 
     _add_storage_commands(subcommands)
+    _add_retrieval_commands(subcommands)
     return parser
 
 
@@ -284,6 +296,98 @@ def _add_storage_commands(subcommands: argparse._SubParsersAction[argparse.Argum
     _add_db_argument(stats_cmd)
     stats_cmd.add_argument("--json", action="store_true", help="Emit statistics as JSON.")
     stats_cmd.set_defaults(handler=_handle_stats)
+
+
+def _add_retrieval_filter_options(command: argparse.ArgumentParser) -> None:
+    """Attach the filter options shared by ``search`` and ``timeline``."""
+    command.add_argument("--type", type=_parse_memory_types, default=None, metavar="T1,T2,...")
+    command.add_argument("--speaker", type=_parse_str_set, default=None, metavar="S1,S2,...")
+    command.add_argument("--meeting", type=_parse_str_set, default=None, metavar="M1,M2,...")
+    command.add_argument("--status", type=_parse_status_set, default=None, metavar="S1,S2,...")
+    command.add_argument("--min-confidence", type=_parse_confidence, default=None, metavar="FLOAT")
+    command.add_argument(
+        "--before", default=None, metavar="DATE", help="Meetings on or before DATE."
+    )
+    command.add_argument("--after", default=None, metavar="DATE", help="Meetings on or after DATE.")
+    command.add_argument(
+        "--between",
+        nargs=2,
+        default=None,
+        metavar=("START", "END"),
+        help="Meetings between START and END (inclusive).",
+    )
+    command.add_argument("--limit", type=int, default=None, help="Maximum results to return.")
+    command.add_argument("--offset", type=int, default=0, help="Skip this many results.")
+    command.add_argument(
+        "--context", type=int, default=0, metavar="N", help="Utterances of context per result."
+    )
+    command.add_argument("--json", action="store_true", help="Emit results as JSON.")
+
+
+def _add_retrieval_commands(
+    subcommands: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
+    """Register the retrieval subcommands (``search``, ``timeline``, ``explain``)."""
+    search_cmd = subcommands.add_parser(
+        "search",
+        help="Search organizational memory across meetings.",
+        description="Rank stored memories by deterministic relevance to a query.",
+    )
+    search_cmd.add_argument("text", nargs="*", help="Free-text query terms.")
+    _add_db_argument(search_cmd)
+    _add_retrieval_filter_options(search_cmd)
+    search_cmd.set_defaults(handler=_handle_search)
+
+    timeline_cmd = subcommands.add_parser(
+        "timeline",
+        help="Show matching memories in chronological order.",
+        description="List memories ordered by meeting date (oldest first).",
+    )
+    timeline_cmd.add_argument("text", nargs="*", help="Free-text query terms.")
+    _add_db_argument(timeline_cmd)
+    _add_retrieval_filter_options(timeline_cmd)
+    timeline_cmd.set_defaults(handler=_handle_timeline)
+
+    explain_cmd = subcommands.add_parser(
+        "explain",
+        help="Explain why a memory exists and show its context.",
+        description="Show a memory's provenance, attributes, and surrounding context.",
+    )
+    explain_cmd.add_argument("memory_id", help="The memory id to explain.")
+    _add_db_argument(explain_cmd)
+    explain_cmd.add_argument(
+        "--context", type=int, default=2, metavar="N", help="Utterances of context to show."
+    )
+    explain_cmd.add_argument("--json", action="store_true", help="Emit the explanation as JSON.")
+    explain_cmd.set_defaults(handler=_handle_explain)
+
+
+def _retrieval_query_from_args(args: argparse.Namespace) -> RetrievalQuery:
+    """Assemble a :class:`RetrievalQuery` from shared filter arguments."""
+    words = getattr(args, "text", None) or []
+    text = " ".join(words).strip() or None
+    date_from: str | None = None
+    date_to: str | None = None
+    if args.between is not None:
+        date_from, date_to = args.between
+    if args.after is not None:
+        date_from = args.after
+    if args.before is not None:
+        date_to = args.before
+    memory_types = frozenset(member.value for member in args.type) if args.type else frozenset()
+    return RetrievalQuery(
+        text=text,
+        memory_types=memory_types,
+        speakers=args.speaker or frozenset(),
+        statuses=args.status or frozenset(),
+        meeting_ids=args.meeting or frozenset(),
+        min_confidence=args.min_confidence,
+        date_from=date_from,
+        date_to=date_to,
+        limit=args.limit,
+        offset=args.offset,
+        context_size=args.context,
+    )
 
 
 def _handle_parse(args: argparse.Namespace) -> int:
@@ -417,6 +521,103 @@ def _handle_stats(args: argparse.Namespace) -> int:
             if count:
                 print(f"  {name}: {count}")
     return 0
+
+
+def _handle_search(args: argparse.Namespace) -> int:
+    """Execute the ``search`` subcommand."""
+    query = _retrieval_query_from_args(args)
+    with SQLiteMemoryStore(args.db) as store:
+        result = MemoryRetriever(store).retrieve(query)
+    if args.json:
+        _print_json(result.to_dict())
+    elif not result.ranked:
+        print("No matching memories.")
+    else:
+        for ranked in result.ranked:
+            print("\n".join(_format_ranked(ranked, args.context)))
+            print("")
+    return 0
+
+
+def _handle_timeline(args: argparse.Namespace) -> int:
+    """Execute the ``timeline`` subcommand."""
+    query = _retrieval_query_from_args(args)
+    with SQLiteMemoryStore(args.db) as store:
+        result = MemoryRetriever(store).timeline(query)
+    if args.json:
+        _print_json(result.to_dict())
+    elif not result.ranked:
+        print("No matching memories.")
+    else:
+        for ranked in result.ranked:
+            date = ranked.meeting.date if ranked.meeting and ranked.meeting.date else "-"
+            speaker = ranked.memory.speaker or "?"
+            print(
+                f"{date}  {ranked.memory.memory_id}  [{ranked.memory.memory_type}] "
+                f"{speaker}: {ranked.memory.text}"
+            )
+    return 0
+
+
+def _handle_explain(args: argparse.Namespace) -> int:
+    """Execute the ``explain`` subcommand."""
+    with SQLiteMemoryStore(args.db) as store:
+        memory = store.get(args.memory_id)
+        meeting = store.get_meeting(memory.meeting_id)
+        applied = RetrievalFilter(
+            memory_types=frozenset({memory.memory_type}),
+            statuses=frozenset({memory.status}),
+            speakers=frozenset({memory.speaker}) if memory.speaker else frozenset(),
+        )
+        components = score_components(memory, meeting, applied, recency=1.0)
+        explanation = explain_match(memory, meeting, applied, components, RankingWeights())
+        context = ContextAssembler().assemble(memory, meeting, args.context)
+    if args.json:
+        _print_json(
+            {
+                "memory": memory.to_dict(),
+                "explanation": explanation.to_dict(),
+                "context": context.to_dict(),
+            }
+        )
+    else:
+        lines = _format_memory_detail(memory)
+        lines.append("matched because:")
+        lines.extend(f"  {line}" for line in explanation.lines())
+        lines.append("context:")
+        lines.extend(f"  {line}" for line in _format_context_lines(context))
+        print("\n".join(lines))
+    return 0
+
+
+def _format_ranked(ranked: RankedMemory, context_size: int) -> list[str]:
+    """Render a ranked memory with its explanation and optional context."""
+    speaker = ranked.memory.speaker or "?"
+    date = ranked.meeting.date if ranked.meeting and ranked.meeting.date else "-"
+    lines = [
+        f"{ranked.memory.memory_id}  ({ranked.score:.3f})  {date}  "
+        f"[{ranked.memory.memory_type}] {ranked.memory.status.value}  {speaker}: "
+        f"{ranked.memory.text}"
+    ]
+    if ranked.explanation is not None:
+        lines.extend(f"  {line}" for line in ranked.explanation.lines())
+    if context_size > 0 and ranked.context is not None:
+        lines.append("  context:")
+        lines.extend(f"    {line}" for line in _format_context_lines(ranked.context))
+    return lines
+
+
+def _format_context_lines(context: ContextWindow) -> list[str]:
+    """Render a context window (before/target/after) as readable lines."""
+    lines: list[str] = []
+    for utterance in context.before:
+        lines.append(f"  [{utterance.index}] {utterance.speaker}: {utterance.text}")
+    if context.target is not None:
+        target = context.target
+        lines.append(f"> [{target.index}] {target.speaker}: {target.text}")
+    for utterance in context.after:
+        lines.append(f"  [{utterance.index}] {utterance.speaker}: {utterance.text}")
+    return lines
 
 
 def _format_memory_line(memory: StoredMemory) -> str:

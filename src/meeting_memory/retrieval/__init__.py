@@ -25,7 +25,13 @@ from .models import (
     RetrievalStats,
 )
 from .planner import PlannerVocabulary, QueryPlanner
-from .ranking import DEFAULT_WEIGHTS, RankingWeights, ScoreComponents, score_memory
+from .ranking import (
+    DEFAULT_WEIGHTS,
+    RankingWeights,
+    ScoreComponents,
+    score_components,
+    score_memory,
+)
 
 __all__ = [
     "DEFAULT_WEIGHTS",
@@ -45,5 +51,6 @@ __all__ = [
     "RetrievalStats",
     "ScoreComponents",
     "explain_match",
+    "score_components",
     "score_memory",
 ]
