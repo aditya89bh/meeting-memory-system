@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from .dashboard import router as dashboard_router
 from .dependencies import get_db_path
 from .errors import register_error_handlers
+from .middleware import register_middleware
 from .routers import (
     automation,
     graph,
@@ -19,6 +20,18 @@ from .routers import (
     search,
 )
 from .version import API_DESCRIPTION, API_TITLE, API_VERSION
+
+OPENAPI_TAGS = [
+    {"name": "system", "description": "Liveness and version reporting."},
+    {"name": "meetings", "description": "Import transcripts and read meeting records."},
+    {"name": "memories", "description": "Query and read stored memory records."},
+    {"name": "search", "description": "Ranked keyword/metadata retrieval over memory."},
+    {"name": "graph", "description": "Knowledge-graph summary, traversal, and paths."},
+    {"name": "intelligence", "description": "Insights, metrics, recommendations, reports."},
+    {"name": "automation", "description": "Run pipelines and read job history and logs."},
+]
+
+REPOSITORY_URL = "https://github.com/aditya89bh/meeting-memory-system"
 
 
 def create_app(*, db_path: str | Path | None = None) -> FastAPI:
@@ -35,7 +48,11 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url="/openapi.json",
+        openapi_tags=OPENAPI_TAGS,
+        contact={"name": "Meeting Memory System", "url": REPOSITORY_URL},
+        license_info={"name": "MIT"},
     )
+    register_middleware(app)
     register_error_handlers(app)
     app.include_router(health.router)
     app.include_router(meetings.router)

@@ -399,6 +399,19 @@ class ReportResponse(_Schema):
 class ImportRequestBody(_Schema):
     """Request body for ``POST /meetings/import``."""
 
+    model_config = ConfigDict(
+        extra="ignore",
+        json_schema_extra={
+            "examples": [
+                {"path": "examples/history", "recursive": True},
+                {
+                    "content": "Alice: We decided to ship the beta.\n",
+                    "format": "text",
+                },
+            ]
+        },
+    )
+
     path: str | None = Field(default=None, description="Server-side file/dir/zip path.")
     content: str | None = Field(default=None, description="Inline transcript content.")
     format: str = Field(default="text", description="Format of inline content.")
@@ -431,6 +444,25 @@ class ImportResponse(_Schema):
 
 class AutomationRunRequest(_Schema):
     """Request body for ``POST /automation/run``."""
+
+    model_config = ConfigDict(
+        extra="ignore",
+        json_schema_extra={
+            "examples": [
+                {"config": "examples/pipelines/daily.yaml", "dry_run": True},
+                {
+                    "pipeline": {
+                        "name": "report",
+                        "steps": [
+                            {"type": "graph"},
+                            {"type": "intelligence"},
+                            {"type": "export", "format": "markdown", "output": "out/report.md"},
+                        ],
+                    }
+                },
+            ]
+        },
+    )
 
     config: str | None = Field(default=None, description="Path to a pipeline file.")
     pipeline: dict[str, Any] | None = Field(default=None, description="Inline pipeline config.")
