@@ -214,7 +214,7 @@ def _process_file(
     try:
         meeting = _parse_meeting(raw_text, source)
         result = extract_memories(meeting, config=config, now=created_at)
-    except MeetingMemoryError as exc:
+    except (MeetingMemoryError, json.JSONDecodeError) as exc:
         return FileImportOutcome(path=source.label, status=ConnectorStatus.FAILURE, error=str(exc))
 
     if dry_run or store is None:

@@ -57,12 +57,13 @@ def _tokenize(text: str) -> list[tuple[int, str]]:
     tokens: list[tuple[int, str]] = []
     for raw in text.splitlines():
         without_comment = _strip_comment(raw)
-        if not without_comment.strip():
+        content = without_comment.strip()
+        if not content:
             continue
-        indent = len(without_comment) - len(without_comment.lstrip(" "))
-        if "\t" in without_comment[:indent]:
+        leading = without_comment[: len(without_comment) - len(without_comment.lstrip())]
+        if "\t" in leading:
             raise PipelineConfigError("tabs are not allowed in YAML indentation")
-        tokens.append((indent, without_comment.strip()))
+        tokens.append((len(leading), content))
     return tokens
 
 
