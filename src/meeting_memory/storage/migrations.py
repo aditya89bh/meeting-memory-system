@@ -67,8 +67,50 @@ CREATE INDEX idx_evidence_memory ON evidence (memory_id);
 CREATE INDEX idx_metadata_owner ON metadata (owner_type, owner_id);
 """
 
+# Version 2: the organizational memory graph (Phase 5). Additive only — it adds
+# new tables and indexes and touches none of the version 1 schema, so existing
+# databases upgrade in place without losing or rewriting any data.
+_MIGRATION_002 = """
+CREATE TABLE graph_nodes (
+    node_id    TEXT PRIMARY KEY,
+    node_type  TEXT NOT NULL,
+    label      TEXT NOT NULL,
+    ref_id     TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE graph_edges (
+    edge_id      TEXT PRIMARY KEY,
+    source_id    TEXT NOT NULL REFERENCES graph_nodes (node_id) ON DELETE CASCADE,
+    target_id    TEXT NOT NULL REFERENCES graph_nodes (node_id) ON DELETE CASCADE,
+    relationship TEXT NOT NULL,
+    created_at   TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE graph_node_metadata (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    node_id TEXT NOT NULL REFERENCES graph_nodes (node_id) ON DELETE CASCADE,
+    key     TEXT NOT NULL,
+    value   TEXT NOT NULL
+);
+
+CREATE TABLE graph_edge_metadata (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    edge_id TEXT NOT NULL REFERENCES graph_edges (edge_id) ON DELETE CASCADE,
+    key     TEXT NOT NULL,
+    value   TEXT NOT NULL
+);
+
+CREATE INDEX idx_graph_nodes_type ON graph_nodes (node_type);
+CREATE INDEX idx_graph_edges_source ON graph_edges (source_id);
+CREATE INDEX idx_graph_edges_target ON graph_edges (target_id);
+CREATE INDEX idx_graph_edges_rel ON graph_edges (relationship);
+CREATE INDEX idx_graph_node_metadata ON graph_node_metadata (node_id);
+CREATE INDEX idx_graph_edge_metadata ON graph_edge_metadata (edge_id);
+"""
+
 # Ordered migrations; index i upgrades the database to version i + 1.
-MIGRATIONS: tuple[str, ...] = (_MIGRATION_001,)
+MIGRATIONS: tuple[str, ...] = (_MIGRATION_001, _MIGRATION_002)
 
 SCHEMA_VERSION: int = len(MIGRATIONS)
 

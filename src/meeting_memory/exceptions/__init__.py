@@ -57,6 +57,14 @@ class DuplicateMeetingError(StorageError):
     """Raised when a meeting (by id or transcript hash) is already stored."""
 
 
+class GraphError(StorageError):
+    """Base class for failures in the organizational memory graph layer."""
+
+
+class NodeNotFoundError(GraphError):
+    """Raised when a graph node cannot be found by id."""
+
+
 class EmptyMeetingError(ValidationError):
     """Raised when a meeting contains no utterances."""
 
@@ -75,11 +83,13 @@ __all__ = [
     "EmptyMeetingError",
     "ExtractionError",
     "ExtractionValidationError",
+    "GraphError",
     "InvalidSpeakerError",
     "MalformedTranscriptError",
     "MeetingMemoryError",
     "MeetingNotFoundError",
     "MemoryNotFoundError",
+    "NodeNotFoundError",
     "StorageError",
     "TranscriptLoadError",
     "TranscriptParseError",

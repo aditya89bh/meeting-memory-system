@@ -21,6 +21,7 @@ from .models import (
     RelationshipType,
     slugify,
 )
+from .store import GraphStore, SQLiteGraphStore
 
 __all__ = [
     "RELATIONSHIP_REGISTRY",
@@ -31,6 +32,8 @@ __all__ = [
     "GraphQuery",
     "GraphRelationship",
     "GraphResult",
+    "GraphStore",
     "RelationshipType",
+    "SQLiteGraphStore",
     "slugify",
 ]
