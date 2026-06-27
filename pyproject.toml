@@ -41,8 +41,11 @@ dev = [
 meeting-memory = "meeting_memory.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/Aditya/meeting-memory-system"
-Repository = "https://github.com/Aditya/meeting-memory-system"
+Homepage = "https://github.com/aditya89bh/meeting-memory-system"
+Repository = "https://github.com/aditya89bh/meeting-memory-system"
+Documentation = "https://github.com/aditya89bh/meeting-memory-system/tree/main/docs"
+Issues = "https://github.com/aditya89bh/meeting-memory-system/issues"
+Changelog = "https://github.com/aditya89bh/meeting-memory-system/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/meeting_memory"]

@@ -1,0 +1,37 @@
+name: Feature request
+description: Suggest an idea for the project
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion! Note the core must stay **deterministic and
+        local-first** (no LLM APIs, embeddings, or required network calls). Please keep
+        that constraint in mind.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+  - type: checkboxes
+    id: determinism
+    attributes:
+      label: Determinism
+      options:
+        - label: This proposal preserves deterministic, local-first behaviour.
+          required: true

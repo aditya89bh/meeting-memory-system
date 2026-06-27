@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+title: Meeting Memory System
+message: >-
+  If you use this software, please cite it using the metadata from this file.
+type: software
+authors:
+  - given-names: Aditya
+    family-names: ""
+repository-code: "https://github.com/aditya89bh/meeting-memory-system"
+url: "https://github.com/aditya89bh/meeting-memory-system"
+abstract: >-
+  A deterministic, local-first system that converts raw meeting transcripts into durable,
+  queryable institutional memory. It extracts typed memory primitives (decisions,
+  commitments, risks, questions, assumptions, open loops, facts), links them across
+  meetings into an organizational graph, and mines them for deterministic organizational
+  intelligence — exposed through a CLI, REST API, Python SDK, and web dashboard. It uses
+  no LLM APIs, embeddings, or vector databases.
+keywords:
+  - meetings
+  - transcripts
+  - institutional-memory
+  - knowledge-graph
+  - organizational-intelligence
+  - deterministic
+license: MIT
+version: 1.0.0
+date-released: "2026-06-28"
