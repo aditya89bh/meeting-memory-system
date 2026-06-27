@@ -1,14 +1,13 @@
 """Meeting Memory System.
 
-Phase 1 provides the ingestion and parsing foundation: it converts raw meeting
-transcripts (plain text or JSON) into a clean, typed internal representation.
-
-This phase intentionally performs **no** AI extraction (no decisions, tasks, or
-summaries). Its sole responsibility is parsing and normalizing meeting data.
+A deterministic meeting-intelligence platform: parse, extract, store, retrieve,
+graph, and analyse meeting transcripts, and import/export organizational memory
+through a connector and automation framework. Phase 8 exposes every capability
+through a shared service layer, a REST API, a Python SDK, and a web dashboard.
 """
 
 from __future__ import annotations
 
-__version__ = "0.5.0"
+__version__ = "0.8.0"
 
 __all__ = ["__version__"]
