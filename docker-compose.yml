@@ -1,0 +1,27 @@
+services:
+  meeting-memory:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: meeting-memory:latest
+    container_name: meeting-memory
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      MEETING_MEMORY_DB: /data/meeting-memory.db
+      MEETING_MEMORY_HOST: 0.0.0.0
+      MEETING_MEMORY_PORT: "8000"
+      MEETING_MEMORY_WORKERS: "1"
+      MEETING_MEMORY_LOG_LEVEL: info
+    volumes:
+      - meeting-memory-data:/data
+    healthcheck:
+      test: ["CMD", "python", "/app/scripts/healthcheck.py"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  meeting-memory-data:
