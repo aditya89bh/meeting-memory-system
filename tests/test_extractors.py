@@ -64,6 +64,13 @@ class TestDecisionExtractor:
     def test_no_match(self) -> None:
         assert _run(DecisionExtractor(), "Let's review the metrics.") == []
 
+    def test_tie_break_prefers_earlier_match(self) -> None:
+        # Two equal-confidence rules match ("decision is" and "approved");
+        # the one starting earlier in the text wins.
+        memory = _run(DecisionExtractor(), "Approved, the decision is final.")[0]
+        assert memory.evidence.text.lower() == "approved"
+        assert memory.confidence == score(HIGH)
+
     def test_hedging_lowers_confidence(self) -> None:
         memory = _run(DecisionExtractor(), "We decided, but maybe we revisit later.")[0]
         assert memory.confidence == score(VERY_HIGH, penalty=0.2)

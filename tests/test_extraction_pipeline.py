@@ -45,6 +45,14 @@ class TestDeriveMeetingId:
     def test_fallback(self) -> None:
         assert derive_meeting_id(parse_text("Alice: We decided to ship.")) == "meeting"
 
+    def test_source_path_without_stem_falls_through(self) -> None:
+        meeting = parse_text("Alice: We decided to ship.", source_path="/")
+        assert derive_meeting_id(meeting) == "meeting"
+
+    def test_title_without_slug_falls_through(self) -> None:
+        meeting = parse_text("---\ntitle: !!!\n---\nAlice: We decided to ship.")
+        assert derive_meeting_id(meeting) == "meeting"
+
 
 class TestPipelineExtraction:
     def test_extracts_all_types(self) -> None:
@@ -76,6 +84,13 @@ class TestPipelineExtraction:
 
     def test_warnings_empty_for_normal_meeting(self) -> None:
         assert extract_memories(_meeting(), now=_NOW).warnings == ()
+
+    def test_default_clock_used_when_now_omitted(self) -> None:
+        result = extract_memories(_meeting())
+        assert result.memories
+        stamp = result.memories[0].extracted_at
+        assert stamp is not None
+        assert stamp.tzinfo is not None
 
 
 class TestPipelineConfig:
@@ -124,8 +139,13 @@ class TestPipelineEdgeCases:
 
     def test_custom_extractor_registry(self) -> None:
         pipeline = ExtractionPipeline([DecisionExtractor()])
+        assert len(pipeline.extractors) == 1
+        assert pipeline.extractors[0].memory_type is MemoryType.DECISION
         result = pipeline.extract(_meeting(), now=_NOW)
         assert set(result.counts()) == {"decision"}
+
+    def test_default_pipeline_exposes_all_extractors(self) -> None:
+        assert len(ExtractionPipeline().extractors) == len(set(MemoryType))
 
     def test_explicit_meeting_id_overrides_derivation(self) -> None:
         meeting = _meeting(source_path="/tmp/sync.txt")
