@@ -16,6 +16,12 @@ risks, assumptions, questions, and important facts.
 > meetings in a deterministic SQLite database (standard-library `sqlite3` only —
 > no ORM, no vector database, no semantic search), so questions like "what
 > decisions have we made?" or "which risks keep appearing?" can be answered later.
+>
+> **Phase 4 — retrieval.** Searches organizational memory across many meetings: a
+> query planner turns text into filters, the engine retrieves with strict AND
+> semantics, a transparent scoring model ranks the results, surrounding context is
+> assembled, and every match is explained. Still **deterministic** — no LLM APIs,
+> embeddings, vector databases, or external search engines.
 
 ## Features
 
@@ -37,8 +43,13 @@ risks, assumptions, questions, and important facts.
 - **Durable memory store** backed by SQLite with a migrated, indexed schema,
   foreign keys, a meeting registry, a deterministic query API, a memory
   lifecycle, and transcript/memory-level duplicate detection.
+- **Deterministic retrieval engine** with a query planner, AND-combined keyword
+  and metadata filtering, a transparent six-factor ranking model, temporal
+  queries (`before`/`after`/`between`/`latest`/`oldest`/`timeline`), configurable
+  context windows, and rule-based per-result explanations.
 - **A command-line interface** with `parse`, `extract`, `import`, `list`, `show`,
-  `meetings`, and `stats` commands that emit human or JSON output.
+  `meetings`, `stats`, `search`, `timeline`, and `explain` commands that emit
+  human or JSON output.
 - **100% test coverage**, fully type-checked (`mypy --strict`) and linted (`ruff`).
 
 ## Installation
@@ -83,6 +94,13 @@ meeting-memory list --db atlas.db --type risk          # recurring risks
 meeting-memory show atlas:decision:0 --db atlas.db      # one memory in detail
 meeting-memory meetings --db atlas.db                   # the meeting registry
 meeting-memory stats --db atlas.db --json               # aggregate counts
+
+# Search organizational memory across every imported meeting
+meeting-memory search postgres --db atlas.db            # ranked keyword search
+meeting-memory search --speaker Alice --type decision --db atlas.db
+meeting-memory search --type risk --status active --db atlas.db
+meeting-memory timeline --type risk --db atlas.db       # chronological history
+meeting-memory explain meeting1:decision:1 --db atlas.db  # why + context
 ```
 
 ### Library
@@ -367,6 +385,117 @@ See [`docs/storage.md`](docs/storage.md) for the architecture, full schema,
 migration strategy, query interface, and future extensions. A runnable
 multi-meeting walkthrough lives in [`examples/history/`](examples/history/).
 
+## Retrieving meeting memory (Phase 4)
+
+Phase 4 searches the persistent store. The pipeline is deterministic end to end:
+
+```
+RetrievalQuery ──▶ plan ──▶ filter (AND) ──▶ rank ──▶ order ──▶ paginate
+                                                │
+                                  context + explanation ─┘
+```
+
+### Search
+
+```bash
+meeting-memory search postgres --db atlas.db --type decision
+```
+
+```text
+meeting1:decision:1  (0.890)  2026-02-02  [decision] active  Priya: We decided to build Atlas on PostgreSQL for the first release.
+  ✓ memory type decision
+  ✓ keyword "postgres"
+```
+
+The **query planner** maps free text onto filters deterministically: memory-type
+words (`decision`, `risks`, `open loop`), lifecycle statuses (`active`,
+`resolved`), month names (`march`), and known speaker/participant names are
+recognised; everything else (minus stopwords) becomes keyword terms. Combined
+with the explicit `--type`/`--speaker`/`--status`/`--meeting`/`--min-confidence`
+options, every filter is AND-combined.
+
+### Ranking overview
+
+Each result gets a score in `[0.0, 1.0]` from a fixed weighted sum of six
+transparent components:
+
+| Component   | Weight | Meaning                                            |
+| ----------- | ------ | -------------------------------------------------- |
+| text match  | 0.30   | fraction of query terms found in the memory body   |
+| exact phrase| 0.15   | the multi-word query appears verbatim              |
+| confidence  | 0.20   | the memory's extraction confidence                 |
+| recency     | 0.15   | newer meetings rank higher                         |
+| status      | 0.10   | `active` > `resolved` > `archived` > ...           |
+| meeting     | 0.10   | query terms found in the meeting title/participants|
+
+Equal scores are broken with stable, deterministic ordering (meeting date, then
+`created_at`, then `memory_id`), so identical inputs always produce identical
+output.
+
+### Timeline queries
+
+```bash
+meeting-memory timeline --type risk --db atlas.db
+meeting-memory timeline --between 2026-02-01 2026-02-28 --db atlas.db
+```
+
+The engine also offers `before`, `after`, `between`, `latest`, and `oldest`
+helpers in the library. A timeline lists matches oldest-first, which makes
+recurring items (such as a risk raised every week) easy to see.
+
+### Explanation output
+
+Every result explains *why* it matched, derived from the data alone:
+
+```bash
+meeting-memory explain meeting1:decision:1 --db atlas.db
+```
+
+```text
+matched because:
+  ✓ speaker Priya
+  ✓ memory type decision
+  ✓ status active
+context:
+    [0] Priya: Welcome to the Project Atlas kickoff, let's set direction.
+  > [1] Priya: We decided to build Atlas on PostgreSQL for the first release.
+    [2] Marco: I will set up the staging environment by next Friday.
+```
+
+`--context N` configures how many surrounding utterances to assemble (the source
+transcript is re-parsed deterministically; if it is unavailable the window
+degrades gracefully to the memory's own text).
+
+### Library
+
+```python
+from meeting_memory.retrieval import MemoryRetriever, RetrievalQuery
+from meeting_memory.storage import SQLiteMemoryStore
+
+with SQLiteMemoryStore("atlas.db") as store:
+    retriever = MemoryRetriever(store)
+    result = retriever.retrieve(
+        RetrievalQuery(text="postgres", memory_types=frozenset({"decision"}), context_size=1)
+    )
+    for ranked in result.ranked:
+        print(ranked.score, ranked.memory.text)
+        print(ranked.explanation.lines())
+```
+
+### Limitations
+
+- Matching is **lexical**: keyword terms are substring-matched and AND-combined,
+  so paraphrases and synonyms are not retrieved (no embeddings or semantic search).
+- The planner resolves names against the speakers/participants already in the
+  store; unknown names fall back to keyword terms.
+- Context assembly re-reads the original transcript by path, so a moved or deleted
+  source yields a memory-only context window.
+
+See [`docs/retrieval.md`](docs/retrieval.md) for the architecture, ranking
+strategy, query planner, retrieval pipeline, context assembly, and the planned
+semantic-search extension. Runnable search/timeline/explain examples live in
+[`examples/retrieval/`](examples/retrieval/).
+
 ## Architecture overview
 
 The package follows a clean, layered structure under `src/meeting_memory/`:
@@ -379,9 +508,10 @@ meeting_memory/
 ├── extraction/    # Phase 2: memory models, extractors, pipeline, dedup, validation
 │   └── extractors/  # One rule-based extractor per memory type
 ├── storage/       # Phase 3: SQLite store, registry, importer, lifecycle, dedup
+├── retrieval/     # Phase 4: planner, engine, ranking, context, explanations
 ├── utils/         # Normalization and statistics helpers
 ├── exceptions/    # Exception hierarchy rooted at MeetingMemoryError
-└── cli.py         # Command-line entry point (parse + extract + import/list/...)
+└── cli.py         # Command-line entry point (parse + extract + import + search/...)
 ```
 
 Data flows in one direction:
@@ -397,6 +527,8 @@ Meeting ──▶ extraction.extract_memories ──▶ ExtractionResult
 ExtractionResult ──▶ storage.persist_extraction ──▶ SQLiteMemoryStore
               (meeting registry + memories + evidence + metadata)
 SQLiteMemoryStore ──▶ query / lifecycle ──▶ StoredMemory records
+RetrievalQuery ──▶ retrieval.MemoryRetriever ──▶ RetrievalResult
+              (plan ▶ filter ▶ rank ▶ order ▶ context + explain)
 ```
 
 - **Loading is decoupled from parsing.** The loader only reads and decodes a
