@@ -9,6 +9,13 @@ external graph databases.
 
 from __future__ import annotations
 
+from .entities import (
+    DEFAULT_VOCABULARY,
+    EntityExtraction,
+    EntityVocabulary,
+    detect_entities,
+    extract_entities,
+)
 from .models import (
     RELATIONSHIP_REGISTRY,
     EntityType,
@@ -24,8 +31,11 @@ from .models import (
 from .store import GraphStore, SQLiteGraphStore
 
 __all__ = [
+    "DEFAULT_VOCABULARY",
     "RELATIONSHIP_REGISTRY",
+    "EntityExtraction",
     "EntityType",
+    "EntityVocabulary",
     "GraphEdge",
     "GraphNode",
     "GraphPath",
@@ -35,5 +45,7 @@ __all__ = [
     "GraphStore",
     "RelationshipType",
     "SQLiteGraphStore",
+    "detect_entities",
+    "extract_entities",
     "slugify",
 ]
