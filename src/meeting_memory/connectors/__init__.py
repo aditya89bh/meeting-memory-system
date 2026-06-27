@@ -74,6 +74,14 @@ from .models import (
     StageResult,
     StepConfig,
 )
+from .scheduler import (
+    CronSpec,
+    Scheduler,
+    cron_next,
+    next_run,
+    parse_cron,
+    simulate,
+)
 
 __all__ = [
     "ArchiveImportConnector",
@@ -89,6 +97,7 @@ __all__ = [
     "ConnectorResult",
     "ConnectorStatus",
     "ConnectorType",
+    "CronSpec",
     "CsvExportConnector",
     "CsvImportConnector",
     "DirectoryImportConnector",
@@ -115,17 +124,22 @@ __all__ = [
     "RecursiveDirectoryImportConnector",
     "Schedule",
     "ScheduleFrequency",
+    "Scheduler",
     "StageResult",
     "StepConfig",
     "StructuredLogger",
     "TextImportConnector",
     "TextReportExportConnector",
+    "cron_next",
     "csv_to_transcript",
     "default_manager",
     "default_registry",
     "markdown_to_transcript",
     "new_correlation_id",
+    "next_run",
+    "parse_cron",
     "read_logs",
     "report_to_html",
+    "simulate",
     "utc_now",
 ]
