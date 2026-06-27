@@ -45,9 +45,7 @@ def test_dataset_richness() -> None:
 
 
 def test_pool_cycles_for_large_counts() -> None:
-    spec = DatasetSpec(
-        name="cycler", projects=20, people=20, meetings=4, utterances_per_meeting=10
-    )
+    spec = DatasetSpec(name="cycler", projects=20, people=20, meetings=4, utterances_per_meeting=10)
     meetings = generate_dataset(spec)
     assert len(meetings) == 4
     # Projects cycle through the (smaller) name pool without crashing.
@@ -95,9 +93,7 @@ def test_runner_rejects_bad_iterations() -> None:
 
 
 def test_benchmark_result_statistics() -> None:
-    result = BenchmarkResult(
-        name="x", unit="op", count=4, samples=(0.1, 0.2, 0.3, 0.4)
-    )
+    result = BenchmarkResult(name="x", unit="op", count=4, samples=(0.1, 0.2, 0.3, 0.4))
     assert result.total_seconds == pytest.approx(1.0)
     assert result.mean_ms == pytest.approx(250.0)
     assert result.median_ms == pytest.approx(250.0)

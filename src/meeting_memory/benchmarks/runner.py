@@ -254,9 +254,7 @@ class BenchmarkRunner:
     def _bench_report(self, db_path: Path) -> BenchmarkResult:
         service = IntelligenceService(db_path)
         report = service.report(AnalysisFilters())
-        samples = [
-            self._time(service.render, report, "markdown") for _ in range(self.iterations)
-        ]
+        samples = [self._time(service.render, report, "markdown") for _ in range(self.iterations)]
         return BenchmarkResult(
             name="report_render",
             unit="render",

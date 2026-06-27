@@ -61,9 +61,7 @@ class ReplayEngine:
         cumulative = 0
         by_type: dict[str, int] = {}
         for index, (meeting, memories) in enumerate(selected):
-            ordered = tuple(
-                sorted(memories, key=lambda mem: (mem.utterance_index, mem.memory_id))
-            )
+            ordered = tuple(sorted(memories, key=lambda mem: (mem.utterance_index, mem.memory_id)))
             cumulative += len(ordered)
             for memory in ordered:
                 by_type[memory.memory_type] = by_type.get(memory.memory_type, 0) + 1

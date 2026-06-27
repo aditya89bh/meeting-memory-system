@@ -8,6 +8,6 @@ through a shared service layer, a REST API, a Python SDK, and a web dashboard.
 
 from __future__ import annotations
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 
 __all__ = ["__version__"]
