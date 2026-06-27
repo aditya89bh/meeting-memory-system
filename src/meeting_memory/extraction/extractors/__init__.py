@@ -10,12 +10,14 @@ from __future__ import annotations
 from .base import ExtractionContext, Extractor, PhraseExtractor, PhraseRule, make_memory_id
 from .commitment import CommitmentExtractor
 from .decision import DecisionExtractor
+from .open_loop import OpenLoopExtractor
 
 __all__ = [
     "CommitmentExtractor",
     "DecisionExtractor",
     "ExtractionContext",
     "Extractor",
+    "OpenLoopExtractor",
     "PhraseExtractor",
     "PhraseRule",
     "default_extractors",
@@ -28,4 +30,5 @@ def default_extractors() -> list[Extractor]:
     return [
         DecisionExtractor(),
         CommitmentExtractor(),
+        OpenLoopExtractor(),
     ]

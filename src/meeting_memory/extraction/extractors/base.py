@@ -52,7 +52,7 @@ def make_memory_id(meeting_id: str, memory_type: MemoryType, utterance_index: in
 class Extractor(Protocol):
     """Protocol implemented by every extractor."""
 
-    memory_type: MemoryType
+    memory_type: ClassVar[MemoryType]
 
     def extract(self, utterance: Utterance, context: ExtractionContext) -> list[ExtractedMemory]:
         """Return the memories found in ``utterance`` (possibly empty)."""
