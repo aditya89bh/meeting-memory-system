@@ -41,6 +41,22 @@ class ExtractionValidationError(ExtractionError):
     """Raised when an extracted memory record fails validation."""
 
 
+class StorageError(MeetingMemoryError):
+    """Base class for failures in the persistent storage layer."""
+
+
+class MemoryNotFoundError(StorageError):
+    """Raised when a memory record cannot be found by id."""
+
+
+class MeetingNotFoundError(StorageError):
+    """Raised when a meeting record cannot be found by id."""
+
+
+class DuplicateMeetingError(StorageError):
+    """Raised when a meeting (by id or transcript hash) is already stored."""
+
+
 class EmptyMeetingError(ValidationError):
     """Raised when a meeting contains no utterances."""
 
@@ -54,6 +70,7 @@ class InvalidSpeakerError(ValidationError):
 
 
 __all__ = [
+    "DuplicateMeetingError",
     "DuplicateTimestampError",
     "EmptyMeetingError",
     "ExtractionError",
@@ -61,6 +78,9 @@ __all__ = [
     "InvalidSpeakerError",
     "MalformedTranscriptError",
     "MeetingMemoryError",
+    "MeetingNotFoundError",
+    "MemoryNotFoundError",
+    "StorageError",
     "TranscriptLoadError",
     "TranscriptParseError",
     "UnsupportedFormatError",
