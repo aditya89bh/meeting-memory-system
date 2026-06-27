@@ -21,6 +21,7 @@ from .models import (
     StoredMeeting,
     StoredMemory,
 )
+from .persistence import PersistResult, persist_extraction
 from .sqlite_store import SQLiteMemoryStore
 
 __all__ = [
@@ -28,10 +29,12 @@ __all__ = [
     "MemoryQuery",
     "MemoryStatus",
     "MemoryStore",
+    "PersistResult",
     "SQLiteMemoryStore",
     "StoredEvidence",
     "StoredMeeting",
     "StoredMemory",
     "memory_content_hash",
+    "persist_extraction",
     "transcript_hash",
 ]
