@@ -11,14 +11,14 @@ from ..exceptions import MalformedTranscriptError
 # tolerating surrounding whitespace and square brackets, e.g. ``[00:01:23.5]``.
 _TIMESTAMP_RE = re.compile(
     r"""
-    ^\s*\[?\s*
+    ^\s*[\[(]?\s*
     (?:
         (?:(?P<hours>\d+):)?(?P<minutes>[0-5]?\d):(?P<seconds>[0-5]?\d)
         |
         (?P<only_seconds>\d+)
     )
     (?:[.,](?P<fraction>\d+))?
-    \s*\]?\s*$
+    \s*[\])]?\s*$
     """,
     re.VERBOSE,
 )
