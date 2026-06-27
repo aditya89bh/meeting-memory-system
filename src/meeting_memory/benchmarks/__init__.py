@@ -17,12 +17,22 @@ from .datasets import (
     get_preset,
     write_dataset,
 )
+from .runner import (
+    BenchmarkReport,
+    BenchmarkResult,
+    BenchmarkRunner,
+    run_benchmarks,
+)
 
 __all__ = [
     "DATASET_PRESETS",
+    "BenchmarkReport",
+    "BenchmarkResult",
+    "BenchmarkRunner",
     "DatasetSpec",
     "GeneratedMeeting",
     "generate_dataset",
     "get_preset",
+    "run_benchmarks",
     "write_dataset",
 ]
