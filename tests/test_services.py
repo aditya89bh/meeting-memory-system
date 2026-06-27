@@ -145,8 +145,8 @@ def test_intelligence_service(db: Path) -> None:
     assert report.insights or report.recommendations
     insights = service.insights(limit=1)
     assert len(insights) <= 1
-    typed = service.insights(types=frozenset({"risk_recurrence"}))
-    assert all(insight.type.value == "risk_recurrence" for insight in typed)
+    typed = service.insights(types=frozenset({"recurring_risk"}))
+    assert all(insight.type.value == "recurring_risk" for insight in typed)
     health = service.metrics()
     assert 0.0 <= health.overall <= 1.0
     recs = service.recommendations(limit=1)
