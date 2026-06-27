@@ -18,6 +18,17 @@ from pathlib import Path
 from . import __version__
 from .exceptions import MeetingMemoryError
 from .extraction import ExtractionConfig, MemoryType, extract_memories
+from .graph import (
+    EXPORT_FORMATS,
+    EntityType,
+    GraphEdge,
+    GraphEngine,
+    GraphNode,
+    RelationshipType,
+    SQLiteGraphStore,
+    build_graph,
+    export_graph,
+)
 from .parser import MeetingParser, validate_meeting
 from .retrieval import (
     ContextAssembler,
@@ -99,6 +110,42 @@ def _parse_status_set(value: str) -> frozenset[MemoryStatus]:
         selected.add(valid[name])
     if not selected:
         raise argparse.ArgumentTypeError("no valid statuses provided")
+    return frozenset(selected)
+
+
+def _parse_entity_types(value: str) -> frozenset[EntityType]:
+    """Parse a comma-separated list of graph node (entity) types into a set."""
+    valid = {member.value: member for member in EntityType}
+    selected: set[EntityType] = set()
+    for raw_name in value.split(","):
+        name = raw_name.strip().lower()
+        if not name:
+            continue
+        if name not in valid:
+            choices = ", ".join(sorted(valid))
+            raise argparse.ArgumentTypeError(f"unknown node type {name!r}; choose from: {choices}")
+        selected.add(valid[name])
+    if not selected:
+        raise argparse.ArgumentTypeError("no valid node types provided")
+    return frozenset(selected)
+
+
+def _parse_relationship_types(value: str) -> frozenset[RelationshipType]:
+    """Parse a comma-separated list of relationship types into a set."""
+    valid = {member.value: member for member in RelationshipType}
+    selected: set[RelationshipType] = set()
+    for raw_name in value.split(","):
+        name = raw_name.strip().lower()
+        if not name:
+            continue
+        if name not in valid:
+            choices = ", ".join(sorted(valid))
+            raise argparse.ArgumentTypeError(
+                f"unknown relationship {name!r}; choose from: {choices}"
+            )
+        selected.add(valid[name])
+    if not selected:
+        raise argparse.ArgumentTypeError("no valid relationships provided")
     return frozenset(selected)
 
 
@@ -202,6 +249,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     _add_storage_commands(subcommands)
     _add_retrieval_commands(subcommands)
+    _add_graph_commands(subcommands)
     return parser
 
 
@@ -588,6 +636,209 @@ def _handle_explain(args: argparse.Namespace) -> int:
         lines.extend(f"  {line}" for line in _format_context_lines(context))
         print("\n".join(lines))
     return 0
+
+
+def _add_graph_commands(subcommands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    """Register the organizational-graph subcommands."""
+    graph_cmd = subcommands.add_parser(
+        "graph",
+        help="Build and summarise the organizational memory graph.",
+        description="Build the graph from stored memories and show node/edge counts.",
+    )
+    _add_db_argument(graph_cmd)
+    graph_cmd.add_argument("--type", type=_parse_entity_types, default=None, metavar="T1,T2,...")
+    graph_cmd.add_argument("--limit", type=int, default=None, help="Maximum nodes to list.")
+    graph_cmd.add_argument("--json", action="store_true", help="Emit the summary as JSON.")
+    graph_cmd.set_defaults(handler=_handle_graph)
+
+    neighbors_cmd = subcommands.add_parser(
+        "neighbors",
+        help="Show the neighbourhood of a graph node.",
+        description="Traverse the graph from a node up to a given depth.",
+    )
+    neighbors_cmd.add_argument("node_id", help="The node id to start from.")
+    _add_db_argument(neighbors_cmd)
+    neighbors_cmd.add_argument("--depth", type=int, default=1, help="Traversal depth (default: 1).")
+    neighbors_cmd.add_argument(
+        "--type", type=_parse_entity_types, default=None, metavar="T1,T2,..."
+    )
+    neighbors_cmd.add_argument(
+        "--relationship", type=_parse_relationship_types, default=None, metavar="R1,R2,..."
+    )
+    neighbors_cmd.add_argument("--limit", type=int, default=None, help="Maximum nodes to list.")
+    neighbors_cmd.add_argument("--json", action="store_true", help="Emit results as JSON.")
+    neighbors_cmd.set_defaults(handler=_handle_neighbors)
+
+    path_cmd = subcommands.add_parser(
+        "path",
+        help="Find the shortest path between two graph nodes.",
+        description="Search for a deterministic shortest path between two nodes.",
+    )
+    path_cmd.add_argument("source", help="The source node id.")
+    path_cmd.add_argument("target", help="The target node id.")
+    _add_db_argument(path_cmd)
+    path_cmd.add_argument("--depth", type=int, default=6, help="Maximum path length (default: 6).")
+    path_cmd.add_argument(
+        "--relationship", type=_parse_relationship_types, default=None, metavar="R1,R2,..."
+    )
+    path_cmd.add_argument("--json", action="store_true", help="Emit the path as JSON.")
+    path_cmd.set_defaults(handler=_handle_path)
+
+    export_cmd = subcommands.add_parser(
+        "export-graph",
+        help="Export the organizational memory graph.",
+        description="Export the graph as JSON, Mermaid, or Graphviz DOT.",
+    )
+    _add_db_argument(export_cmd)
+    export_cmd.add_argument(
+        "--format", choices=EXPORT_FORMATS, default="json", help="Export format (default: json)."
+    )
+    export_cmd.add_argument("--type", type=_parse_entity_types, default=None, metavar="T1,T2,...")
+    export_cmd.add_argument("--limit", type=int, default=None, help="Maximum nodes to include.")
+    export_cmd.set_defaults(handler=_handle_export_graph)
+
+
+def _build_graph_store(db: Path) -> SQLiteGraphStore:
+    """Build the graph from the memory store and return an open graph store."""
+    graph_store = SQLiteGraphStore(db)
+    with SQLiteMemoryStore(db) as memory_store:
+        build_graph(memory_store, graph_store)
+    return graph_store
+
+
+def _filtered_graph(
+    store: SQLiteGraphStore,
+    node_types: frozenset[EntityType] | None,
+    limit: int | None,
+) -> tuple[list[GraphNode], list[GraphEdge]]:
+    """Return nodes (optionally filtered/limited) and the edges among them."""
+    nodes = store.list_nodes(node_types=node_types, limit=limit)
+    keep = {node.node_id for node in nodes}
+    edges = [
+        edge for edge in store.list_edges() if edge.source_id in keep and edge.target_id in keep
+    ]
+    return nodes, edges
+
+
+def _handle_graph(args: argparse.Namespace) -> int:
+    """Execute the ``graph`` subcommand."""
+    store = _build_graph_store(args.db)
+    try:
+        by_node_type: dict[str, int] = {}
+        for node in store.list_nodes():
+            by_node_type[node.node_type.value] = by_node_type.get(node.node_type.value, 0) + 1
+        by_relationship: dict[str, int] = {}
+        for edge in store.list_edges():
+            by_relationship[edge.relationship.value] = (
+                by_relationship.get(edge.relationship.value, 0) + 1
+            )
+        listed = store.list_nodes(node_types=args.type, limit=args.limit)
+        summary = {
+            "nodes": store.count_nodes(),
+            "edges": store.count_edges(),
+            "by_node_type": dict(sorted(by_node_type.items())),
+            "by_relationship": dict(sorted(by_relationship.items())),
+            "listed": [node.to_dict() for node in listed],
+        }
+    finally:
+        store.close()
+
+    if args.json:
+        _print_json(summary)
+        return 0
+    print(f"Nodes: {summary['nodes']}")
+    print(f"Edges: {summary['edges']}")
+    print("By node type:")
+    for name, count in sorted(by_node_type.items()):
+        print(f"  {name}: {count}")
+    print("By relationship:")
+    for name, count in sorted(by_relationship.items()):
+        print(f"  {name}: {count}")
+    if args.type is not None or args.limit is not None:
+        print("Nodes:")
+        for node in listed:
+            print(f"  {_format_node_line(node)}")
+    return 0
+
+
+def _handle_neighbors(args: argparse.Namespace) -> int:
+    """Execute the ``neighbors`` subcommand."""
+    store = _build_graph_store(args.db)
+    try:
+        node = store.get_node(args.node_id)
+        result = GraphEngine(store).neighbors(
+            args.node_id,
+            depth=args.depth,
+            relationships=args.relationship,
+            node_types=args.type,
+            limit=args.limit,
+        )
+        payload = result.to_dict()
+        related = [n for n in result.nodes if n.node_id != args.node_id]
+        edges = list(result.edges)
+    finally:
+        store.close()
+
+    if args.json:
+        _print_json(payload)
+        return 0
+    print(f"node: {_format_node_line(node)}")
+    print(f"neighbors ({len(related)}):")
+    for neighbor in related:
+        print(f"  {_format_node_line(neighbor)}")
+    print(f"edges ({len(edges)}):")
+    for edge in edges:
+        print(f"  {edge.source_id} -{edge.relationship.value}-> {edge.target_id}")
+    return 0
+
+
+def _handle_path(args: argparse.Namespace) -> int:
+    """Execute the ``path`` subcommand."""
+    store = _build_graph_store(args.db)
+    try:
+        path = GraphEngine(store).find_path(
+            args.source, args.target, max_depth=args.depth, relationships=args.relationship
+        )
+        payload = path.to_dict() if path is not None else None
+    finally:
+        store.close()
+
+    if args.json:
+        _print_json(payload)
+        return 0
+    if path is None:
+        print("No path found.")
+        return 0
+    print(f"path (length {path.length}):")
+    print(f"  {_format_node_line(path.nodes[0])}")
+    for index, edge in enumerate(path.edges):
+        print(f"  -{edge.relationship.value}->")
+        print(f"  {_format_node_line(path.nodes[index + 1])}")
+    return 0
+
+
+def _handle_export_graph(args: argparse.Namespace) -> int:
+    """Execute the ``export-graph`` subcommand."""
+    store = _build_graph_store(args.db)
+    try:
+        nodes, edges = _filtered_graph(store, args.type, args.limit)
+        rendered = export_graph(nodes, edges, args.format)
+    finally:
+        store.close()
+
+    if isinstance(rendered, dict):
+        _print_json(rendered)
+    else:
+        print(rendered, end="")
+    return 0
+
+
+def _format_node_line(node: GraphNode) -> str:
+    """Render a one-line summary of a graph node."""
+    text = " ".join(node.label.split())
+    if len(text) > 60:
+        text = text[:59].rstrip() + "…"
+    return f"{node.node_id}  [{node.node_type.value}]  {text}"
 
 
 def _format_ranked(ranked: RankedMemory, context_size: int) -> list[str]:
