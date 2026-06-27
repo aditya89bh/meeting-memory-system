@@ -9,6 +9,7 @@ external graph databases.
 
 from __future__ import annotations
 
+from .builder import GraphBuildResult, build_graph
 from .entities import (
     DEFAULT_VOCABULARY,
     EntityExtraction,
@@ -36,6 +37,7 @@ __all__ = [
     "EntityExtraction",
     "EntityType",
     "EntityVocabulary",
+    "GraphBuildResult",
     "GraphEdge",
     "GraphNode",
     "GraphPath",
@@ -45,6 +47,7 @@ __all__ = [
     "GraphStore",
     "RelationshipType",
     "SQLiteGraphStore",
+    "build_graph",
     "detect_entities",
     "extract_entities",
     "slugify",
