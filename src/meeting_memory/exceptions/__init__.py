@@ -33,6 +33,14 @@ class ValidationError(MeetingMemoryError):
     """Base class for semantic validation failures on parsed meetings."""
 
 
+class ExtractionError(MeetingMemoryError):
+    """Base class for failures in the memory extraction layer."""
+
+
+class ExtractionValidationError(ExtractionError):
+    """Raised when an extracted memory record fails validation."""
+
+
 class EmptyMeetingError(ValidationError):
     """Raised when a meeting contains no utterances."""
 
@@ -48,6 +56,8 @@ class InvalidSpeakerError(ValidationError):
 __all__ = [
     "DuplicateTimestampError",
     "EmptyMeetingError",
+    "ExtractionError",
+    "ExtractionValidationError",
     "InvalidSpeakerError",
     "MalformedTranscriptError",
     "MeetingMemoryError",
