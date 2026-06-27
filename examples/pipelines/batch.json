@@ -1,0 +1,18 @@
+{
+  "name": "batch-analysis",
+  "schedule": { "frequency": "manual" },
+  "steps": [
+    {
+      "type": "import",
+      "sources": [
+        "examples/history/meeting1.txt",
+        "examples/history/meeting2.txt",
+        "examples/history/meeting3.txt"
+      ]
+    },
+    { "type": "graph" },
+    { "type": "intelligence" },
+    { "type": "export", "format": "report", "output": "atlas-batch.txt" },
+    { "type": "export", "format": "csv", "output": "atlas-memories.csv" }
+  ]
+}

@@ -1,0 +1,25 @@
+# Daily ingestion + report pipeline.
+#
+# Imports a directory of transcripts, builds the knowledge graph, runs the
+# intelligence engine, and exports a Markdown report and a JSON graph. Run with:
+#
+#   meeting-memory automate examples/pipelines/daily.yaml --db atlas.db
+#   meeting-memory automate examples/pipelines/daily.yaml --db atlas.db --dry-run
+name: daily
+schedule:
+  frequency: daily
+steps:
+  - type: import
+    source: examples/history
+    recursive: true
+  - type: graph
+  - type: intelligence
+  - type: export
+    format: markdown
+    output: atlas-report.md
+  - type: export
+    format: json
+    output: atlas-report.json
+  - type: export
+    format: graph
+    output: atlas-graph.json

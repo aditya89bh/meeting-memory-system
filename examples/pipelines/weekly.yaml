@@ -1,0 +1,23 @@
+# Weekly organization-wide report pipeline.
+#
+# Runs every Monday at 09:00 (via the cron subset) over the whole transcript
+# history and produces an HTML organization report plus per-meeting summaries.
+#
+#   meeting-memory schedule examples/pipelines/weekly.yaml --count 4
+#   meeting-memory automate examples/pipelines/weekly.yaml --db atlas.db
+name: weekly-report
+schedule:
+  frequency: cron
+  expression: "0 9 * * 1"
+steps:
+  - type: import
+    source: examples/history
+    recursive: true
+  - type: graph
+  - type: intelligence
+  - type: export
+    format: html
+    output: atlas-weekly.html
+  - type: export
+    format: summary
+    output: atlas-summaries.md
