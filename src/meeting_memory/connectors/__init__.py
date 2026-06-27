@@ -12,6 +12,17 @@ schedulers, no network access, no credentials.
 
 from __future__ import annotations
 
+from .logging import (
+    JsonlFileLogSink,
+    LogLevel,
+    LogRecord,
+    LogSink,
+    MemoryLogSink,
+    StructuredLogger,
+    new_correlation_id,
+    read_logs,
+    utc_now,
+)
 from .models import (
     AutomationJob,
     AutomationResult,
@@ -44,8 +55,17 @@ __all__ = [
     "FileImportOutcome",
     "ImportRequest",
     "ImportResult",
+    "JsonlFileLogSink",
+    "LogLevel",
+    "LogRecord",
+    "LogSink",
+    "MemoryLogSink",
     "Schedule",
     "ScheduleFrequency",
     "StageResult",
     "StepConfig",
+    "StructuredLogger",
+    "new_correlation_id",
+    "read_logs",
+    "utc_now",
 ]
