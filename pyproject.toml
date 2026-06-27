@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "meeting-memory"
-version = "0.6.0"
-description = "Ingestion and parsing layer that converts raw meeting transcripts into a clean, structured representation."
+version = "0.7.0"
+description = "Deterministic meeting-intelligence platform: parse, extract, store, retrieve, graph, analyse, and import/export meeting memory via a connector and automation framework."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }

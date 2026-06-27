@@ -30,6 +30,15 @@ coverage.xml
 *.sqlite
 *.sqlite3
 
+# Connector / automation run artifacts (job history, structured logs, example exports)
+*.jobs.jsonl
+*.logs.jsonl
+atlas-report.md
+atlas-report.json
+atlas-graph.json
+atlas-memories.csv
+atlas-batch.txt
+
 # Editor / OS noise
 .DS_Store
 .idea/
