@@ -1,12 +1,16 @@
 # Meeting Memory System
 
-A robust ingestion and parsing layer that converts raw meeting transcripts into
-a clean, typed, structured internal representation.
+Convert raw meeting transcripts into a clean, typed structure and extract the
+durable *memory primitives* of a meeting — decisions, commitments, open loops,
+risks, assumptions, questions, and important facts.
 
-> **Phase 1 scope.** This phase covers **parsing and normalization only**. It
-> deliberately performs **no** AI extraction (no decisions, tasks, or
-> summaries). Its sole responsibility is turning raw transcripts into a faithful
-> structured model that later phases can build on.
+> **Phase 1 — parsing.** Turns raw transcripts (`.txt`/`.json`) into a faithful,
+> normalized, typed `Meeting` model. No extraction.
+>
+> **Phase 2 — extraction.** Analyses a parsed `Meeting` and extracts structured
+> memory records. It is **deterministic and rule-based**: no external LLM APIs,
+> no network access, no randomness. The same input always yields the same output.
+> This is intentionally **not** a generic meeting summarizer.
 
 ## Features
 
@@ -16,12 +20,17 @@ a clean, typed, structured internal representation.
   registry so new on-disk formats can be added without touching the parser.
 - **Format-aware parser** that understands speaker labels, leading/trailing
   timestamps, multi-line utterances, and an optional metadata front-matter block.
+- **Deterministic memory extraction** of seven primitives via a configurable,
+  rule-based extractor registry with evidence spans and confidence scores.
+- **Confidence scoring, deduplication, and validation** built into the
+  extraction pipeline, with type and minimum-confidence filtering.
 - **Semantic validation** with descriptive exceptions for empty meetings,
   duplicate timestamps, and invalid speakers.
 - **Normalization utilities** that clean whitespace, line endings, speaker
   labels, and timestamp formatting without changing semantic content.
 - **Statistics helpers** for utterance/speaker/word counts and meeting duration.
-- **A command-line interface** that emits structured JSON.
+- **A command-line interface** with `parse` and `extract` commands that emit
+  structured JSON.
 - **100% test coverage**, fully type-checked (`mypy --strict`) and linted (`ruff`).
 
 ## Installation
@@ -51,6 +60,13 @@ meeting-memory parse meeting.json --stats --output meeting.parsed.json
 # Skip semantic validation, or allow duplicate timestamps
 meeting-memory parse meeting.txt --no-validate
 meeting-memory parse meeting.json --allow-duplicate-timestamps
+
+# Extract memory records (decisions, commitments, risks, ...)
+meeting-memory extract examples/startup_weekly.txt --indent 2
+
+# Only certain types, above a confidence floor, written to a file
+meeting-memory extract meeting.txt --types decision,commitment,risk \
+    --min-confidence 0.7 --output result.json
 ```
 
 ### Library
@@ -150,6 +166,99 @@ Speaker, text, and timestamp fields accept a few common aliases.
 With `--stats`, a `"statistics"` object is added containing utterance, speaker,
 and word counts plus the meeting duration.
 
+## Extracting meeting memory (Phase 2)
+
+Phase 2 extracts seven kinds of memory primitive:
+
+| Type         | What it captures                          | Example trigger phrases                        |
+| ------------ | ----------------------------------------- | ---------------------------------------------- |
+| `decision`   | A choice the group settled on             | "we decided", "approved", "let's go with"      |
+| `commitment` | An action someone agreed to take          | "I will", "can you", "assigned to", "by Friday"|
+| `open_loop`  | An unresolved thread needing attention    | "pending", "follow up", "TBD", "to be confirmed"|
+| `risk`       | A risk, concern, blocker, or dependency   | "risk", "blocker", "might fail", "dependency"  |
+| `assumption` | An assumption the discussion relied on    | "assuming", "we assume", "if this holds"       |
+| `question`   | An explicit question                      | a trailing "?", "should we", "the question is" |
+| `fact`       | An important factual statement            | customer / metric / requirement / timeline language |
+
+Each extracted record carries full provenance: a stable `memory_id`, its
+`memory_type`, the utterance `text`, the `speaker`, the `meeting_id`, the
+`utterance_index`, an `evidence` span (the exact substring that triggered it), a
+bounded `confidence` in `[0.0, 1.0]`, an `extracted_at` timestamp, and optional
+`metadata` (commitments also carry `owner` and `due`).
+
+### Library
+
+```python
+from datetime import datetime, timezone
+
+from meeting_memory.parser import parse_file
+from meeting_memory.extraction import ExtractionConfig, MemoryType, extract_memories
+
+meeting = parse_file("examples/startup_weekly.txt")
+
+config = ExtractionConfig(
+    enabled_types=frozenset({MemoryType.DECISION, MemoryType.COMMITMENT}),
+    min_confidence=0.7,
+    deduplicate=True,
+)
+result = extract_memories(meeting, config=config)
+
+print(result.total, result.counts())
+for memory in result.memories:
+    print(f"{memory.memory_type}: {memory.text} (conf={memory.confidence})")
+```
+
+### `extract` output shape
+
+```json
+{
+  "meeting_id": "startup_weekly",
+  "meeting": { "title": "Startup Weekly Sync", "date": "2026-01-12", "...": "..." },
+  "total": 9,
+  "counts": { "decision": 2, "commitment": 1, "risk": 1, "...": "..." },
+  "memories": {
+    "decision": [
+      {
+        "memory_id": "startup_weekly:decision:1",
+        "memory_type": "decision",
+        "text": "We decided to move the launch to February 3rd.",
+        "speaker": "Priya",
+        "meeting_id": "startup_weekly",
+        "utterance_index": 1,
+        "evidence": { "utterance_index": 1, "start": 0, "end": 10, "text": "We decided" },
+        "confidence": 0.95,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": { "trigger": "We decided" }
+      }
+    ]
+  },
+  "warnings": []
+}
+```
+
+Runnable examples live in [`examples/`](examples/) with reference outputs in
+[`examples/outputs/`](examples/outputs/). Useful `extract` flags:
+`--types`, `--min-confidence`, `--no-deduplicate`, `--output`, `--indent`, and
+`--now` (stamp a fixed timestamp for reproducible output).
+
+See [`docs/extraction.md`](docs/extraction.md) for the full pipeline, memory
+schema, supported phrases, confidence model, and limitations.
+
+### Limitations of deterministic extraction
+
+This phase trades recall and nuance for determinism and auditability:
+
+- It matches **explicit trigger phrases**, so paraphrased or implicit statements
+  are missed, and unusual phrasings of a decision/commitment will not be caught.
+- It cannot do **cross-utterance reasoning**: a question that is later answered is
+  still reported as a question, and genuinely unanswered questions are not
+  inferred (only explicit open-loop language is matched).
+- Trigger words can produce **false positives** (e.g. "risk" used casually).
+  Confidence scores and `--min-confidence` help callers manage this trade-off.
+- It does **no** semantic understanding, summarization, or normalization of
+  meaning. A future LLM-backed extractor is a planned extension point (see the
+  docs) that can reuse the same models, pipeline, and validation.
+
 ## Architecture overview
 
 The package follows a clean, layered structure under `src/meeting_memory/`:
@@ -159,9 +268,11 @@ meeting_memory/
 ├── models/        # Typed domain models (Meeting, Speaker, Utterance, ...)
 ├── io/            # Transcript loading from disk (extensible format registry)
 ├── parser/        # Parsing raw content into meetings, plus validation
+├── extraction/    # Phase 2: memory models, extractors, pipeline, dedup, validation
+│   └── extractors/  # One rule-based extractor per memory type
 ├── utils/         # Normalization and statistics helpers
 ├── exceptions/    # Exception hierarchy rooted at MeetingMemoryError
-└── cli.py         # Command-line entry point
+└── cli.py         # Command-line entry point (parse + extract)
 ```
 
 Data flows in one direction:
@@ -170,24 +281,30 @@ Data flows in one direction:
 file ──▶ io.load_transcript ──▶ RawTranscript ──▶ parser.parse ──▶ Meeting
                                                           │
                                        utils.normalize_* ─┘
-Meeting ──▶ parser.validate_meeting        (semantic checks)
-Meeting ──▶ utils.compute_statistics       (descriptive metrics)
+Meeting ──▶ parser.validate_meeting          (semantic checks)
+Meeting ──▶ utils.compute_statistics         (descriptive metrics)
+Meeting ──▶ extraction.extract_memories ──▶ ExtractionResult
+              (scan ▶ extractors ▶ dedup ▶ validate ▶ filter)
 ```
 
 - **Loading is decoupled from parsing.** The loader only reads and decodes a
   file; the parser interprets the decoded content. Adding a new format means
   registering a reader callable — no parser changes required.
+- **Extraction is decoupled from parsing.** Extractors consume a `Meeting` and
+  emit `ExtractedMemory` records; the registry is open for extension (add an
+  extractor without touching the pipeline).
 - **Models are immutable.** All domain models are frozen dataclasses, so a parsed
-  `Meeting` is a stable, hashable value object.
+  `Meeting` and every `ExtractedMemory` is a stable, hashable value object.
 - **Errors are specific.** Every failure raises a descriptive subclass of
-  `MeetingMemoryError`, distinguishing load, parse, and validation problems.
+  `MeetingMemoryError`, distinguishing load, parse, validation, and extraction
+  problems.
 
 ## Development
 
 ```bash
 ruff check .          # lint
-ruff format .         # format
-mypy                  # strict type checking
+ruff format --check . # formatting check
+mypy src              # strict type checking
 pytest --cov          # run tests with coverage
 ```
 
