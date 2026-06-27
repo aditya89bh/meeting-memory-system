@@ -11,7 +11,9 @@ The layer is intentionally simple and dependency-free: standard-library
 
 from __future__ import annotations
 
+from .base import MemoryStore
 from .hashing import memory_content_hash, transcript_hash
+from .migrations import SCHEMA_VERSION
 from .models import (
     MemoryQuery,
     MemoryStatus,
@@ -19,10 +21,14 @@ from .models import (
     StoredMeeting,
     StoredMemory,
 )
+from .sqlite_store import SQLiteMemoryStore
 
 __all__ = [
+    "SCHEMA_VERSION",
     "MemoryQuery",
     "MemoryStatus",
+    "MemoryStore",
+    "SQLiteMemoryStore",
     "StoredEvidence",
     "StoredMeeting",
     "StoredMemory",
