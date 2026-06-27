@@ -93,6 +93,10 @@ class ReplayError(MeetingMemoryError):
     """Raised when a replay session is misconfigured or exhausted."""
 
 
+class BackupError(MeetingMemoryError):
+    """Raised when a backup, restore, or snapshot operation fails."""
+
+
 class EmptyMeetingError(ValidationError):
     """Raised when a meeting contains no utterances."""
 
@@ -107,6 +111,7 @@ class InvalidSpeakerError(ValidationError):
 
 __all__ = [
     "AutomationError",
+    "BackupError",
     "ConnectorError",
     "ConnectorValidationError",
     "DuplicateMeetingError",
