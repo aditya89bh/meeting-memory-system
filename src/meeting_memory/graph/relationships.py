@@ -45,9 +45,7 @@ def meeting_relationships(
         )
     for entity_id in sorted(extraction.meeting_mentions):
         edges.append(
-            GraphEdge.create(
-                meeting_node, RelationshipType.MENTIONS, entity_id, created_at=created
-            )
+            GraphEdge.create(meeting_node, RelationshipType.MENTIONS, entity_id, created_at=created)
         )
 
     memory_nodes = {memory.memory_id: GraphNode.for_memory(memory).node_id for memory in memories}
@@ -140,9 +138,7 @@ def _shared_entity_links(
             if not source_entities:
                 continue
             for decision in decisions:
-                decision_entities = extraction.memory_mentions.get(
-                    decision.memory_id, frozenset()
-                )
+                decision_entities = extraction.memory_mentions.get(decision.memory_id, frozenset())
                 if source_entities & decision_entities:
                     edges.append(
                         GraphEdge.create(
