@@ -18,6 +18,7 @@ from .entities import (
     detect_entities,
     extract_entities,
 )
+from .export import EXPORT_FORMATS, export_graph, to_dot, to_json, to_mermaid
 from .lineage import decision_lineage, relationship_lineage, risk_lineage
 from .linking import cross_meeting_edges
 from .models import (
@@ -36,6 +37,7 @@ from .store import GraphStore, SQLiteGraphStore
 
 __all__ = [
     "DEFAULT_VOCABULARY",
+    "EXPORT_FORMATS",
     "MEMORY_NODE_TYPES",
     "RELATIONSHIP_REGISTRY",
     "EntityExtraction",
@@ -56,8 +58,12 @@ __all__ = [
     "cross_meeting_edges",
     "decision_lineage",
     "detect_entities",
+    "export_graph",
     "extract_entities",
     "relationship_lineage",
     "risk_lineage",
     "slugify",
+    "to_dot",
+    "to_json",
+    "to_mermaid",
 ]
