@@ -65,6 +65,7 @@ class Pagination(_Schema):
     limit: int | None = Field(default=None, description="Requested page size.")
     offset: int = Field(default=0, description="Number of leading items skipped.")
     count: int = Field(description="Number of items returned in this page.")
+    total: int = Field(description="Total number of matching items.")
 
 
 # --- meetings / memories -------------------------------------------------
