@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from .context import ContextAssembler
 from .engine import MemoryRetriever
+from .explain import explain_match
 from .models import (
     ContextUtterance,
     ContextWindow,
@@ -43,5 +44,6 @@ __all__ = [
     "RetrievalResult",
     "RetrievalStats",
     "ScoreComponents",
+    "explain_match",
     "score_memory",
 ]

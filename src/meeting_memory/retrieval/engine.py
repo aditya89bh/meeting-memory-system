@@ -12,6 +12,7 @@ import dataclasses
 
 from ..storage import MemoryStore, StoredMeeting, StoredMemory
 from .context import ContextAssembler
+from .explain import explain_match
 from .models import (
     RankedMemory,
     RetrievalFilter,
@@ -20,7 +21,7 @@ from .models import (
     RetrievalStats,
 )
 from .planner import PlannerVocabulary, QueryPlanner
-from .ranking import RankingWeights, score_memory
+from .ranking import RankingWeights, score_components, score_memory
 
 _ORDER_RELEVANCE = "relevance"
 _ORDER_CHRONOLOGICAL = "chronological"
@@ -55,7 +56,7 @@ class MemoryRetriever:
         ]
         ranked = self._order(ranked, query.order)
         page = self._paginate(ranked, query.offset, query.limit)
-        page = [self._with_context(item, query.context_size) for item in page]
+        page = [self._enrich(item, applied, recency, query.context_size) for item in page]
         stats = RetrievalStats(
             candidates=len(ranked),
             returned=len(page),
@@ -169,9 +170,22 @@ class MemoryRetriever:
             return ranked[offset:]
         return ranked[offset : offset + limit]
 
-    def _with_context(self, item: RankedMemory, context_size: int) -> RankedMemory:
+    def _enrich(
+        self,
+        item: RankedMemory,
+        applied: RetrievalFilter,
+        recency: dict[str, float],
+        context_size: int,
+    ) -> RankedMemory:
+        components = score_components(
+            item.memory,
+            item.meeting,
+            applied,
+            recency=recency.get(item.memory.meeting_id, 1.0),
+        )
+        explanation = explain_match(item.memory, item.meeting, applied, components, self._weights)
         context = self._assembler.assemble(item.memory, item.meeting, context_size)
-        return dataclasses.replace(item, context=context)
+        return dataclasses.replace(item, explanation=explanation, context=context)
 
 
 def _recency_map(
