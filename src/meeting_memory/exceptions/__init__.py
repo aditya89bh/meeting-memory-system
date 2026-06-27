@@ -89,6 +89,10 @@ class AutomationError(ConnectorError):
     """Raised when an automation job fails to execute."""
 
 
+class ReplayError(MeetingMemoryError):
+    """Raised when a replay session is misconfigured or exhausted."""
+
+
 class EmptyMeetingError(ValidationError):
     """Raised when a meeting contains no utterances."""
 
@@ -118,6 +122,7 @@ __all__ = [
     "MemoryNotFoundError",
     "NodeNotFoundError",
     "PipelineConfigError",
+    "ReplayError",
     "ScheduleError",
     "StorageError",
     "TranscriptLoadError",
