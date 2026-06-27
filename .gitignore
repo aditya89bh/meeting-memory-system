@@ -39,6 +39,9 @@ atlas-graph.json
 atlas-memories.csv
 atlas-batch.txt
 
+# Locally captured dashboard pages
+examples/api/dashboard/
+
 # Editor / OS noise
 .DS_Store
 .idea/
