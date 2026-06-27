@@ -25,6 +25,11 @@ coverage.xml
 .mypy_cache/
 .ruff_cache/
 
+# Local databases (default CLI store path)
+*.db
+*.sqlite
+*.sqlite3
+
 # Editor / OS noise
 .DS_Store
 .idea/
