@@ -12,6 +12,15 @@ schedulers, no network access, no credentials.
 
 from __future__ import annotations
 
+from .base import (
+    AutomationConnector,
+    Connector,
+    ConnectorManager,
+    ConnectorRegistry,
+    ExecutionContext,
+    ExportConnector,
+    ImportConnector,
+)
 from .logging import (
     JsonlFileLogSink,
     LogLevel,
@@ -43,16 +52,23 @@ from .models import (
 )
 
 __all__ = [
+    "AutomationConnector",
     "AutomationJob",
     "AutomationResult",
+    "Connector",
     "ConnectorCapability",
+    "ConnectorManager",
     "ConnectorMetadata",
+    "ConnectorRegistry",
     "ConnectorResult",
     "ConnectorStatus",
     "ConnectorType",
+    "ExecutionContext",
+    "ExportConnector",
     "ExportRequest",
     "ExportResult",
     "FileImportOutcome",
+    "ImportConnector",
     "ImportRequest",
     "ImportResult",
     "JsonlFileLogSink",
