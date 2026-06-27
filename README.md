@@ -30,6 +30,14 @@ risks, assumptions, questions, and important facts.
 > meetings across time, and the graph supports traversal, shortest-path, lineage,
 > and JSON/Mermaid/DOT export. Still **deterministic** — no LLM APIs, embeddings,
 > vector databases, or external graph databases (Neo4j, etc.).
+>
+> **Phase 6 — organizational intelligence.** Mines the stored memory and graph for
+> deterministic patterns: repeatedly changed decisions, unresolved/recurring
+> risks, commitment overload, project bottlenecks, and knowledge reuse. A small
+> plugin architecture discovers and runs insight, metric, recommendation, and
+> report providers, producing health metrics, evidence-backed recommendations,
+> and JSON/Markdown/plain-text reports. Still **deterministic** — no LLM APIs,
+> embeddings, external analytics engines, or external databases.
 
 ## Features
 
@@ -58,9 +66,14 @@ risks, assumptions, questions, and important facts.
 - **Organizational memory graph** with deterministic entity and relationship
   extraction, cross-meeting linking, traversal (`neighbors`/`related`/`find_path`/
   `connected_components`), decision and risk lineage, and JSON/Mermaid/DOT export.
+- **Organizational intelligence engine** with a plugin architecture
+  (insight/metric/recommendation/report providers), deterministic decision,
+  commitment, and risk analyses, organizational-health scoring, evidence-backed
+  recommendations, and JSON/Markdown/plain-text reports.
 - **A command-line interface** with `parse`, `extract`, `import`, `list`, `show`,
   `meetings`, `stats`, `search`, `timeline`, `explain`, `graph`, `neighbors`,
-  `path`, and `export-graph` commands that emit human or JSON output.
+  `path`, `export-graph`, `insights`, `metrics`, `recommendations`, and `report`
+  commands that emit human or JSON output.
 - **100% test coverage**, fully type-checked (`mypy --strict`) and linted (`ruff`).
 
 ## Installation
@@ -599,6 +612,61 @@ See [`docs/graph.md`](docs/graph.md) for the architecture, schema, entity and
 relationship extraction rules, traversal, lineage, and future graph-reasoning
 extensions. Runnable graph examples live in [`examples/graph/`](examples/graph/).
 
+## Decision intelligence & organizational insights (Phase 6)
+
+Phase 6 turns the stored memory and graph into deterministic organizational
+intelligence. A small **plugin architecture** discovers four kinds of provider —
+insight, metric, recommendation, and report — and the engine runs every provider
+that supports the analysed context, in a fixed (name-sorted) order.
+
+```bash
+# Discover insights across all meetings (recurring risks, commitment overload, ...)
+meeting-memory insights --db atlas.db
+
+# Organizational-health metrics
+meeting-memory metrics --db atlas.db
+
+# Evidence-backed recommendations, highest priority first
+meeting-memory recommendations --db atlas.db
+
+# Full report as Markdown (also: text, json), optionally written to a file
+meeting-memory report --db atlas.db --format markdown --output report.md
+
+# Every command accepts --project, --person, and --meeting filters; insights and
+# recommendations also take --type / --limit, and report takes --format / --output.
+meeting-memory insights --db atlas.db --person Alice --type recurring_risk --json
+```
+
+### What it computes
+
+- **Decision intelligence** — repeatedly superseded decisions, revisited
+  decisions, long-running lineages, and decision density/velocity/stability.
+- **Commitment intelligence** — open/resolved counts, resolution rate, overdue
+  and aging commitments, per-owner workload, and commitment overload.
+- **Risk intelligence** — recurring, unresolved, and long-lived risks, plus
+  project risk hotspots and recurring blockers (via the graph).
+- **Organizational health** — a composite score over decision stability,
+  commitment completion, risk resolution, meeting productivity, knowledge reuse,
+  and cross-team collaboration, with average resolution time and risk density.
+- **Recommendations** — each insight maps to a prioritised, severity-tagged
+  recommendation carrying its supporting evidence and related memories.
+
+A deterministic **reference date** (the latest meeting date) replaces wall-clock
+time, so overdue/aging/age analyses are fully reproducible.
+
+### Limitations
+
+- Insights are **rule- and threshold-based**, computed from stored memory and the
+  graph — there is no inference or prediction.
+- Recommendations are a fixed mapping from insight type to advice; they prioritise
+  and surface evidence, they do not author novel guidance.
+- Health scores use fixed, documented formulas and weights.
+
+See [`docs/intelligence.md`](docs/intelligence.md) for the provider architecture,
+metric and insight definitions, recommendation rules, report generation, and
+future ML extension points. Runnable examples live in
+[`examples/intelligence/`](examples/intelligence/).
+
 ## Architecture overview
 
 The package follows a clean, layered structure under `src/meeting_memory/`:
@@ -614,9 +682,11 @@ meeting_memory/
 ├── retrieval/     # Phase 4: planner, engine, ranking, context, explanations
 ├── graph/         # Phase 5: models, store, entity/relationship extraction,
 │                  #          cross-meeting linking, traversal, lineage, export
+├── intelligence/  # Phase 6: models, context, providers/registry, engine,
+│                  #          decision/commitment/risk/health, recommendations, report
 ├── utils/         # Normalization and statistics helpers
 ├── exceptions/    # Exception hierarchy rooted at MeetingMemoryError
-└── cli.py         # Command-line entry point (parse + extract + import + search + graph/...)
+└── cli.py         # Command-line entry point (parse + extract + import + search + graph + insights/...)
 ```
 
 Data flows in one direction:
@@ -637,6 +707,8 @@ RetrievalQuery ──▶ retrieval.MemoryRetriever ──▶ RetrievalResult
 SQLiteMemoryStore ──▶ graph.build_graph ──▶ SQLiteGraphStore (nodes + edges)
               (entities ▶ relationships ▶ cross-meeting linking)
 SQLiteGraphStore ──▶ graph.GraphEngine ──▶ neighbors / paths / lineage / export
+SQLiteMemoryStore (+ graph) ──▶ intelligence.IntelligenceEngine ──▶ InsightReport
+              (context ▶ providers ▶ insights + metrics + recommendations ▶ render)
 ```
 
 - **Loading is decoupled from parsing.** The loader only reads and decodes a
