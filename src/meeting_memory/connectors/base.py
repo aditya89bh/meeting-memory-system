@@ -287,3 +287,18 @@ class ConnectorManager:
         if request.sources:
             return self.registry.get_import(IMPORT_BATCH)
         return self.registry.import_for_path(request.source, recursive=request.recursive)
+
+
+def default_registry() -> ConnectorRegistry:
+    """Build a registry populated with all built-in connectors."""
+    from . import exporters, importers
+
+    registry = ConnectorRegistry()
+    importers.register_all(registry)
+    exporters.register_all(registry)
+    return registry
+
+
+def default_manager() -> ConnectorManager:
+    """Build a :class:`ConnectorManager` over the default registry."""
+    return ConnectorManager(default_registry())
