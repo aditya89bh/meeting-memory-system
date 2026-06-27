@@ -29,6 +29,13 @@ from .graph import (
     build_graph,
     export_graph,
 )
+from .intelligence import (
+    REPORT_FORMATS,
+    AnalysisFilters,
+    InsightReport,
+    InsightType,
+    IntelligenceEngine,
+)
 from .parser import MeetingParser, validate_meeting
 from .retrieval import (
     ContextAssembler,
@@ -149,6 +156,33 @@ def _parse_relationship_types(value: str) -> frozenset[RelationshipType]:
     return frozenset(selected)
 
 
+def _parse_insight_types(value: str) -> frozenset[InsightType]:
+    """Parse a comma-separated list of insight types into a set."""
+    valid = {member.value: member for member in InsightType}
+    selected: set[InsightType] = set()
+    for raw_name in value.split(","):
+        name = raw_name.strip().lower()
+        if not name:
+            continue
+        if name not in valid:
+            choices = ", ".join(sorted(valid))
+            raise argparse.ArgumentTypeError(
+                f"unknown insight type {name!r}; choose from: {choices}"
+            )
+        selected.add(valid[name])
+    if not selected:
+        raise argparse.ArgumentTypeError("no valid insight types provided")
+    return frozenset(selected)
+
+
+def _parse_meeting_ids(value: str) -> frozenset[str]:
+    """Parse a comma-separated list of meeting ids into a set."""
+    ids = {item.strip() for item in value.split(",") if item.strip()}
+    if not ids:
+        raise argparse.ArgumentTypeError("no valid meeting ids provided")
+    return frozenset(ids)
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Construct the top-level argument parser."""
     parser = argparse.ArgumentParser(
@@ -250,6 +284,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_storage_commands(subcommands)
     _add_retrieval_commands(subcommands)
     _add_graph_commands(subcommands)
+    _add_intelligence_commands(subcommands)
     return parser
 
 
@@ -830,6 +865,161 @@ def _handle_export_graph(args: argparse.Namespace) -> int:
         _print_json(rendered)
     else:
         print(rendered, end="")
+    return 0
+
+
+def _add_filter_arguments(command: argparse.ArgumentParser) -> None:
+    """Attach the shared intelligence filter options to a subcommand."""
+    command.add_argument("--project", default=None, help="Restrict analysis to one project.")
+    command.add_argument("--person", default=None, help="Restrict analysis to one person.")
+    command.add_argument("--meeting", type=_parse_meeting_ids, default=None, metavar="ID1,ID2,...")
+
+
+def _add_intelligence_commands(
+    subcommands: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
+    """Register the decision-intelligence subcommands."""
+    insights_cmd = subcommands.add_parser(
+        "insights",
+        help="Discover organizational insights across meetings.",
+        description="Run every insight provider over stored memory and the graph.",
+    )
+    _add_db_argument(insights_cmd)
+    _add_filter_arguments(insights_cmd)
+    insights_cmd.add_argument(
+        "--type", type=_parse_insight_types, default=None, metavar="T1,T2,..."
+    )
+    insights_cmd.add_argument("--limit", type=int, default=None, help="Maximum insights to show.")
+    insights_cmd.add_argument("--json", action="store_true", help="Emit insights as JSON.")
+    insights_cmd.set_defaults(handler=_handle_insights)
+
+    metrics_cmd = subcommands.add_parser(
+        "metrics",
+        help="Compute organizational-health metrics.",
+        description="Compute deterministic health metrics from stored memory.",
+    )
+    _add_db_argument(metrics_cmd)
+    _add_filter_arguments(metrics_cmd)
+    metrics_cmd.add_argument("--json", action="store_true", help="Emit metrics as JSON.")
+    metrics_cmd.set_defaults(handler=_handle_metrics)
+
+    rec_cmd = subcommands.add_parser(
+        "recommendations",
+        help="Generate evidence-backed recommendations.",
+        description="Turn discovered insights into prioritised recommendations.",
+    )
+    _add_db_argument(rec_cmd)
+    _add_filter_arguments(rec_cmd)
+    rec_cmd.add_argument("--limit", type=int, default=None, help="Maximum recommendations.")
+    rec_cmd.add_argument("--json", action="store_true", help="Emit recommendations as JSON.")
+    rec_cmd.set_defaults(handler=_handle_recommendations)
+
+    report_cmd = subcommands.add_parser(
+        "report",
+        help="Generate a full organizational-intelligence report.",
+        description="Assemble metrics, insights, and recommendations into a report.",
+    )
+    _add_db_argument(report_cmd)
+    _add_filter_arguments(report_cmd)
+    report_cmd.add_argument(
+        "--format", choices=REPORT_FORMATS, default="text", help="Report format (default: text)."
+    )
+    report_cmd.add_argument(
+        "-o", "--output", type=Path, default=None, help="Write the report to this file."
+    )
+    report_cmd.set_defaults(handler=_handle_report)
+
+
+def _filters_from_args(args: argparse.Namespace) -> AnalysisFilters:
+    """Build :class:`AnalysisFilters` from shared CLI options."""
+    return AnalysisFilters(
+        project=args.project,
+        person=args.person,
+        meetings=args.meeting if args.meeting is not None else frozenset(),
+    )
+
+
+def _build_report(args: argparse.Namespace) -> InsightReport:
+    """Open the stores, build the graph, and produce a report for ``args``."""
+    filters = _filters_from_args(args)
+    with SQLiteMemoryStore(args.db) as memory_store:
+        graph_store = SQLiteGraphStore(args.db)
+        try:
+            return IntelligenceEngine().analyze(memory_store, graph_store, filters=filters)
+        finally:
+            graph_store.close()
+
+
+def _handle_insights(args: argparse.Namespace) -> int:
+    """Execute the ``insights`` subcommand."""
+    report = _build_report(args)
+    insights = list(report.insights)
+    if args.type is not None:
+        insights = [insight for insight in insights if insight.type in args.type]
+    if args.limit is not None:
+        insights = insights[: args.limit]
+
+    if args.json:
+        _print_json([insight.to_dict() for insight in insights])
+        return 0
+    if not insights:
+        print("No insights found.")
+        return 0
+    for insight in insights:
+        print(f"[{insight.severity}] ({insight.category}) {insight.title}")
+        print(f"    {insight.detail}")
+    return 0
+
+
+def _handle_metrics(args: argparse.Namespace) -> int:
+    """Execute the ``metrics`` subcommand."""
+    report = _build_report(args)
+    health = report.health
+
+    if args.json:
+        _print_json(health.to_dict())
+        return 0
+    print(f"Reference date: {health.reference_date or 'n/a'}")
+    print(f"Overall health: {health.overall:.4f}")
+    print("Scores:")
+    for key in sorted(health.scores):
+        print(f"  {key}: {health.scores[key]:.4g}")
+    print("Decisions:", health.decision.to_dict())
+    print("Commitments:", health.commitment.to_dict())
+    print("Risks:", health.risk.to_dict())
+    print("Meetings:", health.meeting.to_dict())
+    return 0
+
+
+def _handle_recommendations(args: argparse.Namespace) -> int:
+    """Execute the ``recommendations`` subcommand."""
+    report = _build_report(args)
+    recommendations = list(report.recommendations)
+    if args.limit is not None:
+        recommendations = recommendations[: args.limit]
+
+    if args.json:
+        _print_json([rec.to_dict() for rec in recommendations])
+        return 0
+    if not recommendations:
+        print("No recommendations.")
+        return 0
+    for rec in recommendations:
+        print(f"[{rec.priority}] ({rec.category}) {rec.title}")
+        print(f"    {rec.detail}")
+    return 0
+
+
+def _handle_report(args: argparse.Namespace) -> int:
+    """Execute the ``report`` subcommand."""
+    report = _build_report(args)
+    rendered = IntelligenceEngine().render(report, args.format)
+    if args.output is not None:
+        suffix = "" if rendered.endswith("\n") else "\n"
+        args.output.write_text(rendered + suffix, encoding="utf-8")
+        print(f"Wrote report to {args.output}")
+    else:
+        print(rendered, end="" if rendered.endswith("\n") else "\n")
     return 0
 
 
