@@ -8,6 +8,8 @@ in their own modules and attached here.
 
 from __future__ import annotations
 
+import dataclasses
+
 from ..storage import MemoryStore, StoredMeeting, StoredMemory
 from .models import (
     RankedMemory,
@@ -57,6 +59,40 @@ class MemoryRetriever:
             limit=query.limit,
         )
         return RetrievalResult(query=query, applied_filter=applied, ranked=tuple(page), stats=stats)
+
+    # -- temporal retrieval ----------------------------------------------------
+
+    def before(self, date: str, base: RetrievalQuery | None = None) -> RetrievalResult:
+        """Memories from meetings on or before ``date``, oldest first."""
+        query = base or RetrievalQuery()
+        return self.retrieve(dataclasses.replace(query, date_to=date, order=_ORDER_CHRONOLOGICAL))
+
+    def after(self, date: str, base: RetrievalQuery | None = None) -> RetrievalResult:
+        """Memories from meetings on or after ``date``, oldest first."""
+        query = base or RetrievalQuery()
+        return self.retrieve(dataclasses.replace(query, date_from=date, order=_ORDER_CHRONOLOGICAL))
+
+    def between(self, start: str, end: str, base: RetrievalQuery | None = None) -> RetrievalResult:
+        """Memories from meetings between ``start`` and ``end`` (inclusive)."""
+        query = base or RetrievalQuery()
+        return self.retrieve(
+            dataclasses.replace(query, date_from=start, date_to=end, order=_ORDER_CHRONOLOGICAL)
+        )
+
+    def latest(self, limit: int = 10, base: RetrievalQuery | None = None) -> RetrievalResult:
+        """The most recent memories first."""
+        query = base or RetrievalQuery()
+        return self.retrieve(dataclasses.replace(query, limit=limit, order=_ORDER_REVERSE))
+
+    def oldest(self, limit: int = 10, base: RetrievalQuery | None = None) -> RetrievalResult:
+        """The earliest memories first."""
+        query = base or RetrievalQuery()
+        return self.retrieve(dataclasses.replace(query, limit=limit, order=_ORDER_CHRONOLOGICAL))
+
+    def timeline(self, base: RetrievalQuery | None = None) -> RetrievalResult:
+        """All matching memories in chronological order."""
+        query = base or RetrievalQuery()
+        return self.retrieve(dataclasses.replace(query, order=_ORDER_CHRONOLOGICAL))
 
     # -- candidate selection ---------------------------------------------------
 
