@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections import deque
 
+from .lineage import decision_lineage, relationship_lineage, risk_lineage
 from .models import (
     EntityType,
     GraphEdge,
@@ -196,6 +197,20 @@ class GraphEngine:
             components.append(sorted(component))
         components.sort(key=lambda ids: ids[0])
         return components
+
+    # -- lineage ---------------------------------------------------------------
+
+    def lineage(self, node_id: str, relationship: RelationshipType) -> GraphPath:
+        """Return the lineage chain through ``relationship``, oldest-to-newest."""
+        return relationship_lineage(self._store, node_id, relationship)
+
+    def decision_lineage(self, node_id: str) -> GraphPath:
+        """Return how a decision evolved via ``SUPERSEDES`` edges."""
+        return decision_lineage(self._store, node_id)
+
+    def risk_lineage(self, node_id: str) -> GraphPath:
+        """Return how a repeated risk/decision evolved via ``CONNECTED_TO`` edges."""
+        return risk_lineage(self._store, node_id)
 
     # -- internal helpers ------------------------------------------------------
 

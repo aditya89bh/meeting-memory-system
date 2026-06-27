@@ -18,6 +18,7 @@ from .entities import (
     detect_entities,
     extract_entities,
 )
+from .lineage import decision_lineage, relationship_lineage, risk_lineage
 from .linking import cross_meeting_edges
 from .models import (
     RELATIONSHIP_REGISTRY,
@@ -53,7 +54,10 @@ __all__ = [
     "SQLiteGraphStore",
     "build_graph",
     "cross_meeting_edges",
+    "decision_lineage",
     "detect_entities",
     "extract_entities",
+    "relationship_lineage",
+    "risk_lineage",
     "slugify",
 ]
