@@ -1,0 +1,35 @@
+# Production-oriented Compose example for the Meeting Memory System API.
+#
+# Differences from the repository's top-level docker-compose.yml:
+#   * pins a published image tag instead of building locally
+#   * adds resource limits and a restart policy
+#   * mounts a host directory for the database so backups are easy to grab
+#
+# Usage:
+#   docker compose -f examples/ops/deployment/docker-compose.prod.yml up -d
+services:
+  meeting-memory:
+    image: meeting-memory:0.9.0
+    container_name: meeting-memory
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      MEETING_MEMORY_DB: /data/meeting-memory.db
+      MEETING_MEMORY_HOST: 0.0.0.0
+      MEETING_MEMORY_PORT: "8000"
+      MEETING_MEMORY_WORKERS: "1"
+      MEETING_MEMORY_LOG_LEVEL: info
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "python", "/app/scripts/healthcheck.py"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
