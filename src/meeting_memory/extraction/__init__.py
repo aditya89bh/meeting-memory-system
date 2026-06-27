@@ -23,6 +23,12 @@ from .models import (
     QuestionMemory,
     RiskMemory,
 )
+from .pipeline import (
+    ExtractionConfig,
+    ExtractionPipeline,
+    derive_meeting_id,
+    extract_memories,
+)
 
 __all__ = [
     "AssumptionMemory",
@@ -30,10 +36,14 @@ __all__ = [
     "DecisionMemory",
     "EvidenceSpan",
     "ExtractedMemory",
+    "ExtractionConfig",
+    "ExtractionPipeline",
     "ExtractionResult",
     "FactMemory",
     "MemoryType",
     "OpenLoopMemory",
     "QuestionMemory",
     "RiskMemory",
+    "derive_meeting_id",
+    "extract_memories",
 ]
