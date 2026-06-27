@@ -1,43 +1,54 @@
 # Meeting Memory System
 
-Convert raw meeting transcripts into a clean, typed structure and extract the
-durable *memory primitives* of a meeting — decisions, commitments, open loops,
-risks, assumptions, questions, and important facts.
+[![CI](https://github.com/aditya89bh/meeting-memory-system/actions/workflows/ci.yml/badge.svg)](https://github.com/aditya89bh/meeting-memory-system/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Checked with mypy](https://img.shields.io/badge/mypy-checked-2a6db2.svg)](https://mypy-lang.org/)
+[![Lint: Ruff](https://img.shields.io/badge/lint-ruff-261230.svg)](https://github.com/astral-sh/ruff)
+[![Coverage: 100%](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#development)
 
-> **Phase 1 — parsing.** Turns raw transcripts (`.txt`/`.json`) into a faithful,
-> normalized, typed `Meeting` model. No extraction.
->
-> **Phase 2 — extraction.** Analyses a parsed `Meeting` and extracts structured
-> memory records. It is **deterministic and rule-based**: no external LLM APIs,
-> no network access, no randomness. The same input always yields the same output.
-> This is intentionally **not** a generic meeting summarizer.
->
-> **Phase 3 — persistence.** Stores extracted memories durably across many
-> meetings in a deterministic SQLite database (standard-library `sqlite3` only —
-> no ORM, no vector database, no semantic search), so questions like "what
-> decisions have we made?" or "which risks keep appearing?" can be answered later.
->
-> **Phase 4 — retrieval.** Searches organizational memory across many meetings: a
-> query planner turns text into filters, the engine retrieves with strict AND
-> semantics, a transparent scoring model ranks the results, surrounding context is
-> assembled, and every match is explained. Still **deterministic** — no LLM APIs,
-> embeddings, vector databases, or external search engines.
->
-> **Phase 5 — organizational graph.** Links meetings, memories, people, projects,
-> technologies, customers, risks, commitments, and decisions into a typed,
-> directed graph persisted in the same SQLite database. Entities and relationships
-> are extracted with fixed rules and vocabularies, repeated entities connect
-> meetings across time, and the graph supports traversal, shortest-path, lineage,
-> and JSON/Mermaid/DOT export. Still **deterministic** — no LLM APIs, embeddings,
-> vector databases, or external graph databases (Neo4j, etc.).
->
-> **Phase 6 — organizational intelligence.** Mines the stored memory and graph for
-> deterministic patterns: repeatedly changed decisions, unresolved/recurring
-> risks, commitment overload, project bottlenecks, and knowledge reuse. A small
-> plugin architecture discovers and runs insight, metric, recommendation, and
-> report providers, producing health metrics, evidence-backed recommendations,
-> and JSON/Markdown/plain-text reports. Still **deterministic** — no LLM APIs,
-> embeddings, external analytics engines, or external databases.
+**Turn raw meeting transcripts into durable, queryable institutional memory** — then
+search it, graph it, and mine it for insights. The system extracts the *memory
+primitives* of every meeting (decisions, commitments, open loops, risks, assumptions,
+questions, and facts) and connects them across meetings so you can answer questions like
+*"which risks keep coming back?"* and *"which decisions have we reversed?"*.
+
+It is **100% deterministic and local-first**: no LLM APIs, no embeddings, no vector
+database, no network calls. The same transcripts always produce the same memory, graph,
+and reports — which makes it auditable, testable, and cheap to run.
+
+## See it in 60 seconds
+
+```bash
+pip install -e .
+meeting-memory demo
+```
+
+The demo imports example meetings, builds memory, runs a search, builds the graph,
+generates intelligence, and renders a report — start to finish in under a minute.
+
+## Why it's different
+
+- **Deterministic, not generative.** Rule-based extraction and analysis — reproducible
+  and explainable, never a black box. It is intentionally *not* a meeting summarizer.
+- **Cross-meeting memory.** Value compounds across meetings: recurring risks, revisited
+  decisions, and aging commitments only emerge when memory spans time.
+- **One system, four surfaces.** A shared service layer powers a [CLI](docs/tutorials/getting-started.md),
+  a [REST API](docs/tutorials/rest-api.md), a [Python SDK](docs/tutorials/python-sdk.md),
+  and a web dashboard — all with identical behaviour.
+- **Production-ready.** Benchmarks, observability, backup/recovery, and Docker
+  deployment ship in the box.
+
+## Documentation
+
+| Start here | Build | Operate |
+|---|---|---|
+| [Tutorials](docs/tutorials/) | [Architecture](docs/architecture.md) | [Deployment](docs/deployment.md) |
+| [Notebooks](notebooks/) | [Database schema](docs/schema.md) | [Backup & recovery](docs/backup.md) |
+| [Example organizations](examples/organizations/) | [REST API](docs/api.md) · [SDK](docs/sdk.md) | [Performance](docs/performance.md) · [Benchmarks](docs/benchmarks.md) |
+| [Case studies](docs/case-studies/) | [CLI reference](#quick-start) | [Replay](docs/replay.md) |
+
+See also: [CHANGELOG](CHANGELOG.md) · [ROADMAP](ROADMAP.md) · [CONTRIBUTING](CONTRIBUTING.md) · [SECURITY](SECURITY.md).
 
 ## Features
 
@@ -969,4 +980,8 @@ python examples/api/serve.py --db atlas.db --port 8000
 
 ## License
 
-MIT
+Released under the [MIT License](LICENSE).
+
+## Citation
+
+If you use this project in academic work, please cite it — see [CITATION.cff](CITATION.cff).
