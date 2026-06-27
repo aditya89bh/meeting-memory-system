@@ -11,6 +11,11 @@ risks, assumptions, questions, and important facts.
 > memory records. It is **deterministic and rule-based**: no external LLM APIs,
 > no network access, no randomness. The same input always yields the same output.
 > This is intentionally **not** a generic meeting summarizer.
+>
+> **Phase 3 — persistence.** Stores extracted memories durably across many
+> meetings in a deterministic SQLite database (standard-library `sqlite3` only —
+> no ORM, no vector database, no semantic search), so questions like "what
+> decisions have we made?" or "which risks keep appearing?" can be answered later.
 
 ## Features
 
@@ -29,8 +34,11 @@ risks, assumptions, questions, and important facts.
 - **Normalization utilities** that clean whitespace, line endings, speaker
   labels, and timestamp formatting without changing semantic content.
 - **Statistics helpers** for utterance/speaker/word counts and meeting duration.
-- **A command-line interface** with `parse` and `extract` commands that emit
-  structured JSON.
+- **Durable memory store** backed by SQLite with a migrated, indexed schema,
+  foreign keys, a meeting registry, a deterministic query API, a memory
+  lifecycle, and transcript/memory-level duplicate detection.
+- **A command-line interface** with `parse`, `extract`, `import`, `list`, `show`,
+  `meetings`, and `stats` commands that emit human or JSON output.
 - **100% test coverage**, fully type-checked (`mypy --strict`) and linted (`ruff`).
 
 ## Installation
@@ -67,6 +75,14 @@ meeting-memory extract examples/startup_weekly.txt --indent 2
 # Only certain types, above a confidence floor, written to a file
 meeting-memory extract meeting.txt --types decision,commitment,risk \
     --min-confidence 0.7 --output result.json
+
+# Persist meetings into a shared database, then query across all of them
+meeting-memory import examples/history/meeting1.txt --db atlas.db
+meeting-memory import examples/history/meeting2.txt --db atlas.db
+meeting-memory list --db atlas.db --type risk          # recurring risks
+meeting-memory show atlas:decision:0 --db atlas.db      # one memory in detail
+meeting-memory meetings --db atlas.db                   # the meeting registry
+meeting-memory stats --db atlas.db --json               # aggregate counts
 ```
 
 ### Library
@@ -259,6 +275,98 @@ This phase trades recall and nuance for determinism and auditability:
   meaning. A future LLM-backed extractor is a planned extension point (see the
   docs) that can reuse the same models, pipeline, and validation.
 
+## Persistent meeting memory (Phase 3)
+
+Phase 3 turns one-shot extraction into durable organizational memory. The
+`import` command runs the full pipeline and persists the result:
+
+```
+Load ──▶ Parse ──▶ Extract ──▶ Persist ──▶ Import summary
+```
+
+```text
+$ meeting-memory import examples/history/meeting1.txt --db atlas.db
+Meeting imported: meeting1
+13 memories stored
+5 facts
+3 decisions
+1 commitment
+1 risk
+1 question
+1 assumption
+1 open loop
+```
+
+### Database schema
+
+Everything lives in a single SQLite file with a versioned, migrated schema
+(`PRAGMA user_version`), foreign keys, and indexes on the common query columns:
+
+| Table      | Purpose                                                              |
+| ---------- | ------------------------------------------------------------------- |
+| `meetings` | Registry: id, title, date, source, duration, participants, hash     |
+| `memories` | One row per extracted memory, with `status` and `content_hash`      |
+| `evidence` | Evidence spans pointing back at the source utterance (FK → memories)|
+| `metadata` | Generic key/value rows (e.g. commitment `owner`/`due`)              |
+
+### Query API
+
+The store exposes a deterministic query interface; every filter AND-combines:
+
+```python
+from meeting_memory.storage import MemoryQuery, MemoryStatus, SQLiteMemoryStore
+
+with SQLiteMemoryStore("atlas.db") as store:
+    store.find_by_type("decision")
+    store.find_by_speaker("Alice")
+    store.find_by_meeting("meeting1")
+    store.find_by_confidence(0.8)
+    store.find_active()
+    store.find_between_dates("2026-02-01", "2026-02-28")
+
+    # richer combinations via MemoryQuery
+    store.query(MemoryQuery(
+        memory_types=frozenset({"commitment"}),
+        statuses=frozenset({MemoryStatus.ACTIVE}),
+        speakers=frozenset({"Marco"}),
+    ))
+```
+
+### Memory lifecycle
+
+Each memory has a `status` (initially `ACTIVE`) and can move through the
+lifecycle with `archive`, `resolve`, `supersede`, `mark_deleted`, and `restore`:
+
+```
+ACTIVE ──▶ ARCHIVED / RESOLVED / SUPERSEDED / DELETED ──▶ (restore) ──▶ ACTIVE
+```
+
+`supersede(old_id, new_id)` records a pointer (`superseded_by`) so a replaced
+decision still links to the one that replaced it.
+
+### Duplicate detection
+
+Two deterministic layers prevent duplicate imports:
+
+- **Meeting level** — the transcript hash in the registry makes re-importing the
+  same file a no-op (reported as already imported).
+- **Memory level** — within a meeting, memories sharing a content hash (same type
+  and normalized text) within a confidence threshold are collapsed. The same
+  point may still recur across *different* meetings, which is what makes "which
+  risks keep appearing?" answerable.
+
+### Limitations
+
+- Storage is single-file SQLite, intended for local/CLI use; it is not a
+  concurrent multi-writer server.
+- Duplicate detection is exact-hash based on normalized text — it does not detect
+  semantically similar paraphrases (that would require Phase-2's deliberately
+  excluded semantic layer).
+
+See [`docs/storage.md`](docs/storage.md) for the architecture, full schema,
+migration strategy, query interface, and future extensions. A runnable
+multi-meeting walkthrough lives in [`examples/history/`](examples/history/).
+
 ## Architecture overview
 
 The package follows a clean, layered structure under `src/meeting_memory/`:
@@ -270,9 +378,10 @@ meeting_memory/
 ├── parser/        # Parsing raw content into meetings, plus validation
 ├── extraction/    # Phase 2: memory models, extractors, pipeline, dedup, validation
 │   └── extractors/  # One rule-based extractor per memory type
+├── storage/       # Phase 3: SQLite store, registry, importer, lifecycle, dedup
 ├── utils/         # Normalization and statistics helpers
 ├── exceptions/    # Exception hierarchy rooted at MeetingMemoryError
-└── cli.py         # Command-line entry point (parse + extract)
+└── cli.py         # Command-line entry point (parse + extract + import/list/...)
 ```
 
 Data flows in one direction:
@@ -285,6 +394,9 @@ Meeting ──▶ parser.validate_meeting          (semantic checks)
 Meeting ──▶ utils.compute_statistics         (descriptive metrics)
 Meeting ──▶ extraction.extract_memories ──▶ ExtractionResult
               (scan ▶ extractors ▶ dedup ▶ validate ▶ filter)
+ExtractionResult ──▶ storage.persist_extraction ──▶ SQLiteMemoryStore
+              (meeting registry + memories + evidence + metadata)
+SQLiteMemoryStore ──▶ query / lifecycle ──▶ StoredMemory records
 ```
 
 - **Loading is decoupled from parsing.** The loader only reads and decodes a
