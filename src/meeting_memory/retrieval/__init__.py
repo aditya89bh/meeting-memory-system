@@ -21,11 +21,14 @@ from .models import (
     RetrievalResult,
     RetrievalStats,
 )
+from .planner import PlannerVocabulary, QueryPlanner
 
 __all__ = [
     "ContextUtterance",
     "ContextWindow",
     "ExplanationReason",
+    "PlannerVocabulary",
+    "QueryPlanner",
     "RankedMemory",
     "RetrievalExplanation",
     "RetrievalFilter",
