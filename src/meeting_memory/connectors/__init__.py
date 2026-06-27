@@ -23,6 +23,13 @@ from .base import (
     default_manager,
     default_registry,
 )
+from .config import (
+    build_job,
+    load_config_data,
+    load_pipeline,
+    parse_yaml,
+    validate_job,
+)
 from .exporters import (
     CsvExportConnector,
     GraphExportConnector,
@@ -130,16 +137,21 @@ __all__ = [
     "StructuredLogger",
     "TextImportConnector",
     "TextReportExportConnector",
+    "build_job",
     "cron_next",
     "csv_to_transcript",
     "default_manager",
     "default_registry",
+    "load_config_data",
+    "load_pipeline",
     "markdown_to_transcript",
     "new_correlation_id",
     "next_run",
     "parse_cron",
+    "parse_yaml",
     "read_logs",
     "report_to_html",
     "simulate",
     "utc_now",
+    "validate_job",
 ]
