@@ -466,7 +466,7 @@ def test_to_dot_escapes_quotes() -> None:
     nodes, edges = _export_nodes_edges()
     text = to_dot(nodes, edges)
     assert text.startswith("digraph memory_graph")
-    assert "\\\"" in text  # the quote in label 'Bob "B"' is escaped
+    assert '\\"' in text  # the quote in label 'Bob "B"' is escaped
 
 
 def test_export_graph_dispatch_and_unknown_format() -> None:
