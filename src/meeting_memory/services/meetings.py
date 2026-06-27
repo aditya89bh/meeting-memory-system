@@ -6,7 +6,7 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..connectors import ImportRequest, ImportResult, default_manager
+from ..connectors import ImportRequest, ImportResult, StructuredLogger, default_manager
 from ..extraction import MemoryType
 from ..storage import MemoryQuery, MemoryStatus, SQLiteMemoryStore, StoredMeeting
 
@@ -57,6 +57,7 @@ class MeetingService:
         min_confidence: float = 0.0,
         memory_types: frozenset[str] = frozenset(),
         limit: int | None = None,
+        logger: StructuredLogger | None = None,
     ) -> ImportResult:
         """Import a file, directory, or archive, reusing the connector manager."""
         request = ImportRequest(
@@ -72,9 +73,9 @@ class MeetingService:
         )
         manager = default_manager()
         if dry_run:
-            return manager.dry_run_import(request)
+            return manager.dry_run_import(request, logger=logger)
         with SQLiteMemoryStore(self.db) as store:
-            return manager.import_source(request, store)
+            return manager.import_source(request, store, logger=logger)
 
     def import_content(
         self,

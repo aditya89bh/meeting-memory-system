@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..connectors import ExportRequest, ExportResult, default_manager
+from ..connectors import ExportRequest, ExportResult, StructuredLogger, default_manager
 from ..graph import SQLiteGraphStore, build_graph
 from ..storage import SQLiteMemoryStore
 
@@ -22,6 +22,7 @@ class ExportService:
         destination: str | Path | None = None,
         dry_run: bool = False,
         options: dict[str, object] | None = None,
+        logger: StructuredLogger | None = None,
     ) -> ExportResult:
         """Export the stored organizational data in ``fmt`` (json/markdown/...)."""
         request = ExportRequest(
@@ -35,7 +36,7 @@ class ExportService:
             graph_store = SQLiteGraphStore(self.db)
             try:
                 build_graph(store, graph_store)
-                return manager.export(request, store, graph_store=graph_store)
+                return manager.export(request, store, graph_store=graph_store, logger=logger)
             finally:
                 graph_store.close()
 

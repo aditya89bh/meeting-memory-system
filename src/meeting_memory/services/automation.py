@@ -62,7 +62,8 @@ class AutomationService:
             raise PipelineConfigError("invalid pipeline configuration: " + "; ".join(problems))
         return self.run_job(job, dry_run=dry_run)
 
-    def load(self, config: str | Path) -> AutomationJob:
+    @staticmethod
+    def load(config: str | Path) -> AutomationJob:
         """Load and validate a pipeline file without running it."""
         return load_pipeline(config)
 

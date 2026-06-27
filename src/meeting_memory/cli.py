@@ -18,16 +18,9 @@ from pathlib import Path
 
 from . import __version__
 from .connectors import (
-    AutomationEngine,
-    ExportRequest,
-    ImportRequest,
-    JobHistory,
     JsonlFileLogSink,
     StructuredLogger,
-    default_manager,
     default_registry,
-    load_pipeline,
-    read_logs,
     simulate,
     utc_now,
 )
@@ -36,32 +29,29 @@ from .extraction import ExtractionConfig, MemoryType, extract_memories
 from .graph import (
     EXPORT_FORMATS,
     EntityType,
-    GraphEdge,
-    GraphEngine,
     GraphNode,
     RelationshipType,
-    SQLiteGraphStore,
-    build_graph,
-    export_graph,
 )
 from .intelligence import (
     REPORT_FORMATS,
     AnalysisFilters,
     InsightReport,
     InsightType,
-    IntelligenceEngine,
 )
 from .parser import MeetingParser, validate_meeting
 from .retrieval import (
-    ContextAssembler,
     ContextWindow,
-    MemoryRetriever,
     RankedMemory,
-    RankingWeights,
-    RetrievalFilter,
     RetrievalQuery,
-    explain_match,
-    score_components,
+)
+from .services import (
+    AutomationService,
+    ExportService,
+    GraphService,
+    IntelligenceService,
+    MeetingService,
+    MemoryService,
+    RetrievalService,
 )
 from .storage import (
     MemoryQuery,
@@ -547,8 +537,7 @@ def _handle_list(args: argparse.Namespace) -> int:
         min_confidence=args.min_confidence,
         limit=args.limit,
     )
-    with SQLiteMemoryStore(args.db) as store:
-        memories = store.query(query)
+    memories = MemoryService(args.db).query(query)
     if args.json:
         _print_json([memory.to_dict() for memory in memories])
     elif not memories:
@@ -561,8 +550,7 @@ def _handle_list(args: argparse.Namespace) -> int:
 
 def _handle_show(args: argparse.Namespace) -> int:
     """Execute the ``show`` subcommand."""
-    with SQLiteMemoryStore(args.db) as store:
-        memory = store.get(args.memory_id)
+    memory = MemoryService(args.db).get_memory(args.memory_id)
     if args.json:
         _print_json(memory.to_dict())
     else:
@@ -572,8 +560,7 @@ def _handle_show(args: argparse.Namespace) -> int:
 
 def _handle_meetings(args: argparse.Namespace) -> int:
     """Execute the ``meetings`` subcommand."""
-    with SQLiteMemoryStore(args.db) as store:
-        meetings = store.list_meetings(limit=args.limit)
+    meetings = MeetingService(args.db).list_meetings(limit=args.limit)
     if args.json:
         _print_json([meeting.to_dict() for meeting in meetings])
     elif not meetings:
@@ -589,25 +576,13 @@ def _handle_meetings(args: argparse.Namespace) -> int:
 
 def _handle_stats(args: argparse.Namespace) -> int:
     """Execute the ``stats`` subcommand."""
-    with SQLiteMemoryStore(args.db) as store:
-        meetings = len(store.list_meetings())
-        total = store.count()
-        by_type = {
-            member.value: store.count(MemoryQuery(memory_types=frozenset({member.value})))
-            for member in MemoryType
-        }
-        by_status = {
-            member.value: store.count(MemoryQuery(statuses=frozenset({member})))
-            for member in MemoryStatus
-        }
-    stats = {
-        "meetings": meetings,
-        "memories": total,
-        "by_type": by_type,
-        "by_status": by_status,
-    }
+    summary = MeetingService(args.db).stats()
+    meetings = summary.meetings
+    total = summary.memories
+    by_type = summary.by_type
+    by_status = summary.by_status
     if args.json:
-        _print_json(stats)
+        _print_json(summary.to_dict())
     else:
         print(f"Meetings: {meetings}")
         print(f"Memories: {total}")
@@ -625,8 +600,7 @@ def _handle_stats(args: argparse.Namespace) -> int:
 def _handle_search(args: argparse.Namespace) -> int:
     """Execute the ``search`` subcommand."""
     query = _retrieval_query_from_args(args)
-    with SQLiteMemoryStore(args.db) as store:
-        result = MemoryRetriever(store).retrieve(query)
+    result = RetrievalService(args.db).search(query)
     if args.json:
         _print_json(result.to_dict())
     elif not result.ranked:
@@ -641,8 +615,7 @@ def _handle_search(args: argparse.Namespace) -> int:
 def _handle_timeline(args: argparse.Namespace) -> int:
     """Execute the ``timeline`` subcommand."""
     query = _retrieval_query_from_args(args)
-    with SQLiteMemoryStore(args.db) as store:
-        result = MemoryRetriever(store).timeline(query)
+    result = RetrievalService(args.db).timeline(query)
     if args.json:
         _print_json(result.to_dict())
     elif not result.ranked:
@@ -660,17 +633,10 @@ def _handle_timeline(args: argparse.Namespace) -> int:
 
 def _handle_explain(args: argparse.Namespace) -> int:
     """Execute the ``explain`` subcommand."""
-    with SQLiteMemoryStore(args.db) as store:
-        memory = store.get(args.memory_id)
-        meeting = store.get_meeting(memory.meeting_id)
-        applied = RetrievalFilter(
-            memory_types=frozenset({memory.memory_type}),
-            statuses=frozenset({memory.status}),
-            speakers=frozenset({memory.speaker}) if memory.speaker else frozenset(),
-        )
-        components = score_components(memory, meeting, applied, recency=1.0)
-        explanation = explain_match(memory, meeting, applied, components, RankingWeights())
-        context = ContextAssembler().assemble(memory, meeting, args.context)
+    explained = RetrievalService(args.db).explain(args.memory_id, context_size=args.context)
+    memory = explained.memory
+    explanation = explained.explanation
+    context = explained.context
     if args.json:
         _print_json(
             {
@@ -749,89 +715,43 @@ def _add_graph_commands(subcommands: argparse._SubParsersAction[argparse.Argumen
     export_cmd.set_defaults(handler=_handle_export_graph)
 
 
-def _build_graph_store(db: Path) -> SQLiteGraphStore:
-    """Build the graph from the memory store and return an open graph store."""
-    graph_store = SQLiteGraphStore(db)
-    with SQLiteMemoryStore(db) as memory_store:
-        build_graph(memory_store, graph_store)
-    return graph_store
-
-
-def _filtered_graph(
-    store: SQLiteGraphStore,
-    node_types: frozenset[EntityType] | None,
-    limit: int | None,
-) -> tuple[list[GraphNode], list[GraphEdge]]:
-    """Return nodes (optionally filtered/limited) and the edges among them."""
-    nodes = store.list_nodes(node_types=node_types, limit=limit)
-    keep = {node.node_id for node in nodes}
-    edges = [
-        edge for edge in store.list_edges() if edge.source_id in keep and edge.target_id in keep
-    ]
-    return nodes, edges
-
-
 def _handle_graph(args: argparse.Namespace) -> int:
     """Execute the ``graph`` subcommand."""
-    store = _build_graph_store(args.db)
-    try:
-        by_node_type: dict[str, int] = {}
-        for node in store.list_nodes():
-            by_node_type[node.node_type.value] = by_node_type.get(node.node_type.value, 0) + 1
-        by_relationship: dict[str, int] = {}
-        for edge in store.list_edges():
-            by_relationship[edge.relationship.value] = (
-                by_relationship.get(edge.relationship.value, 0) + 1
-            )
-        listed = store.list_nodes(node_types=args.type, limit=args.limit)
-        summary = {
-            "nodes": store.count_nodes(),
-            "edges": store.count_edges(),
-            "by_node_type": dict(sorted(by_node_type.items())),
-            "by_relationship": dict(sorted(by_relationship.items())),
-            "listed": [node.to_dict() for node in listed],
-        }
-    finally:
-        store.close()
-
+    summary = GraphService(args.db).summary(node_types=args.type, limit=args.limit)
     if args.json:
-        _print_json(summary)
+        _print_json(summary.to_dict())
         return 0
-    print(f"Nodes: {summary['nodes']}")
-    print(f"Edges: {summary['edges']}")
+    print(f"Nodes: {summary.nodes}")
+    print(f"Edges: {summary.edges}")
     print("By node type:")
-    for name, count in sorted(by_node_type.items()):
+    for name, count in sorted(summary.by_node_type.items()):
         print(f"  {name}: {count}")
     print("By relationship:")
-    for name, count in sorted(by_relationship.items()):
+    for name, count in sorted(summary.by_relationship.items()):
         print(f"  {name}: {count}")
     if args.type is not None or args.limit is not None:
         print("Nodes:")
-        for node in listed:
+        for node in summary.listed:
             print(f"  {_format_node_line(node)}")
     return 0
 
 
 def _handle_neighbors(args: argparse.Namespace) -> int:
     """Execute the ``neighbors`` subcommand."""
-    store = _build_graph_store(args.db)
-    try:
-        node = store.get_node(args.node_id)
-        result = GraphEngine(store).neighbors(
-            args.node_id,
-            depth=args.depth,
-            relationships=args.relationship,
-            node_types=args.type,
-            limit=args.limit,
-        )
-        payload = result.to_dict()
-        related = [n for n in result.nodes if n.node_id != args.node_id]
-        edges = list(result.edges)
-    finally:
-        store.close()
+    neighborhood = GraphService(args.db).neighbors(
+        args.node_id,
+        depth=args.depth,
+        relationships=args.relationship,
+        node_types=args.type,
+        limit=args.limit,
+    )
+    node = neighborhood.node
+    result = neighborhood.result
+    related = [n for n in result.nodes if n.node_id != args.node_id]
+    edges = list(result.edges)
 
     if args.json:
-        _print_json(payload)
+        _print_json(result.to_dict())
         return 0
     print(f"node: {_format_node_line(node)}")
     print(f"neighbors ({len(related)}):")
@@ -845,17 +765,11 @@ def _handle_neighbors(args: argparse.Namespace) -> int:
 
 def _handle_path(args: argparse.Namespace) -> int:
     """Execute the ``path`` subcommand."""
-    store = _build_graph_store(args.db)
-    try:
-        path = GraphEngine(store).find_path(
-            args.source, args.target, max_depth=args.depth, relationships=args.relationship
-        )
-        payload = path.to_dict() if path is not None else None
-    finally:
-        store.close()
-
+    path = GraphService(args.db).path(
+        args.source, args.target, max_depth=args.depth, relationships=args.relationship
+    )
     if args.json:
-        _print_json(payload)
+        _print_json(path.to_dict() if path is not None else None)
         return 0
     if path is None:
         print("No path found.")
@@ -870,13 +784,7 @@ def _handle_path(args: argparse.Namespace) -> int:
 
 def _handle_export_graph(args: argparse.Namespace) -> int:
     """Execute the ``export-graph`` subcommand."""
-    store = _build_graph_store(args.db)
-    try:
-        nodes, edges = _filtered_graph(store, args.type, args.limit)
-        rendered = export_graph(nodes, edges, args.format)
-    finally:
-        store.close()
-
+    rendered = GraphService(args.db).export(args.format, node_types=args.type, limit=args.limit)
     if isinstance(rendered, dict):
         _print_json(rendered)
     else:
@@ -958,12 +866,7 @@ def _filters_from_args(args: argparse.Namespace) -> AnalysisFilters:
 def _build_report(args: argparse.Namespace) -> InsightReport:
     """Open the stores, build the graph, and produce a report for ``args``."""
     filters = _filters_from_args(args)
-    with SQLiteMemoryStore(args.db) as memory_store:
-        graph_store = SQLiteGraphStore(args.db)
-        try:
-            return IntelligenceEngine().analyze(memory_store, graph_store, filters=filters)
-        finally:
-            graph_store.close()
+    return IntelligenceService(args.db).report(filters)
 
 
 def _handle_insights(args: argparse.Namespace) -> int:
@@ -1029,7 +932,7 @@ def _handle_recommendations(args: argparse.Namespace) -> int:
 def _handle_report(args: argparse.Namespace) -> int:
     """Execute the ``report`` subcommand."""
     report = _build_report(args)
-    rendered = IntelligenceEngine().render(report, args.format)
+    rendered = IntelligenceService(args.db).render(report, args.format)
     if args.output is not None:
         suffix = "" if rendered.endswith("\n") else "\n"
         args.output.write_text(rendered + suffix, encoding="utf-8")
@@ -1042,11 +945,6 @@ def _handle_report(args: argparse.Namespace) -> int:
 def _logs_path(db: Path) -> Path:
     """Return the structured-log JSON Lines path beside a database."""
     return db.with_name(db.name + ".logs.jsonl")
-
-
-def _jobs_path(db: Path) -> Path:
-    """Return the job-history JSON Lines path beside a database."""
-    return db.with_name(db.name + ".jobs.jsonl")
 
 
 def _cli_logger(db: Path) -> StructuredLogger:
@@ -1163,19 +1061,14 @@ def _add_connector_commands(
 def _handle_import_dir(args: argparse.Namespace) -> int:
     """Execute the ``import-dir`` subcommand."""
     logger = _cli_logger(args.db)
-    manager = default_manager()
-    request = ImportRequest(
-        source=str(args.path),
+    result = MeetingService(args.db).import_path(
+        args.path,
         recursive=args.recursive,
         pattern=args.pattern,
         dry_run=args.dry_run,
         limit=args.limit,
+        logger=logger,
     )
-    if args.dry_run:
-        result = manager.dry_run_import(request, logger=logger)
-    else:
-        with SQLiteMemoryStore(args.db) as store:
-            result = manager.import_source(request, store, logger=logger)
     if args.json:
         _print_json(result.to_dict())
     else:
@@ -1186,19 +1079,12 @@ def _handle_import_dir(args: argparse.Namespace) -> int:
 def _handle_export(args: argparse.Namespace) -> int:
     """Execute the ``export`` subcommand."""
     logger = _cli_logger(args.db)
-    manager = default_manager()
-    request = ExportRequest(
-        fmt=args.format,
+    result = ExportService(args.db).export(
+        args.format,
         destination=str(args.output) if args.output is not None else None,
         dry_run=args.dry_run,
+        logger=logger,
     )
-    with SQLiteMemoryStore(args.db) as store:
-        graph_store = SQLiteGraphStore(args.db)
-        try:
-            build_graph(store, graph_store)
-            result = manager.export(request, store, graph_store=graph_store, logger=logger)
-        finally:
-            graph_store.close()
     if args.json:
         _print_json(result.to_dict())
     elif result.destination is not None or args.dry_run:
@@ -1211,13 +1097,7 @@ def _handle_export(args: argparse.Namespace) -> int:
 
 def _handle_automate(args: argparse.Namespace) -> int:
     """Execute the ``automate`` subcommand."""
-    engine = AutomationEngine(
-        history=JobHistory(_jobs_path(args.db)),
-        log_sink=JsonlFileLogSink(_logs_path(args.db)),
-        clock=time.monotonic,
-        now=utc_now,
-    )
-    result = engine.run_file(args.config, db=args.db, dry_run=args.dry_run)
+    result = AutomationService(args.db).run_file(args.config, dry_run=args.dry_run)
     if args.json:
         _print_json(result.to_dict())
     else:
@@ -1227,7 +1107,7 @@ def _handle_automate(args: argparse.Namespace) -> int:
 
 def _handle_jobs(args: argparse.Namespace) -> int:
     """Execute the ``jobs`` subcommand."""
-    records = JobHistory(_jobs_path(args.db)).list(limit=args.limit)
+    records = AutomationService(args.db).jobs(limit=args.limit)
     if args.json:
         _print_json(records)
         return 0
@@ -1246,7 +1126,7 @@ def _handle_jobs(args: argparse.Namespace) -> int:
 
 def _handle_schedule(args: argparse.Namespace) -> int:
     """Execute the ``schedule`` subcommand."""
-    job = load_pipeline(args.config)
+    job = AutomationService.load(args.config)
     after = args.after if args.after is not None else datetime.now(timezone.utc)
     runs = simulate(job.schedule, start=after, count=args.count)
     if args.json:
@@ -1270,7 +1150,7 @@ def _handle_schedule(args: argparse.Namespace) -> int:
 
 def _handle_logs(args: argparse.Namespace) -> int:
     """Execute the ``logs`` subcommand."""
-    records = read_logs(_logs_path(args.db), correlation_id=args.correlation, limit=args.limit)
+    records = AutomationService(args.db).logs(correlation_id=args.correlation, limit=args.limit)
     if args.json:
         _print_json(records)
         return 0
