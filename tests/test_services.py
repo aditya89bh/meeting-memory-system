@@ -149,8 +149,11 @@ def test_intelligence_service(db: Path) -> None:
     assert all(insight.type.value == "recurring_risk" for insight in typed)
     health = service.metrics()
     assert 0.0 <= health.overall <= 1.0
+    assert isinstance(service.insights(), list)
     recs = service.recommendations(limit=1)
     assert len(recs) <= 1
+    all_recs = service.recommendations()
+    assert len(all_recs) >= len(recs)
     rendered = service.render(report, "markdown")
     assert rendered.startswith("#")
 
