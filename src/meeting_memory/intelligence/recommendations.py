@@ -99,14 +99,6 @@ _ACTIONS: dict[InsightType, tuple[str, str]] = {
         "Unblock a project",
         "Prioritize clearing the recurring blockers on this project.",
     ),
-    InsightType.REPEATED_DISCUSSION: (
-        "Reduce repeated discussions",
-        "Capture conclusions so the same topic is not re-litigated.",
-    ),
-    InsightType.ASSUMPTION_BECAME_FACT: (
-        "Confirm a validated assumption",
-        "Record the assumption as an established fact for reuse.",
-    ),
 }
 
 
