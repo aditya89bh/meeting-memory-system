@@ -65,6 +65,30 @@ class NodeNotFoundError(GraphError):
     """Raised when a graph node cannot be found by id."""
 
 
+class ConnectorError(MeetingMemoryError):
+    """Base class for failures in the connector and automation layer."""
+
+
+class ConnectorValidationError(ConnectorError):
+    """Raised when a connector request fails pre-flight validation."""
+
+
+class UnknownConnectorError(ConnectorError):
+    """Raised when no connector is registered for a requested source/format."""
+
+
+class PipelineConfigError(ConnectorError):
+    """Raised when a declarative pipeline configuration is invalid."""
+
+
+class ScheduleError(ConnectorError):
+    """Raised when a schedule definition or cron expression is invalid."""
+
+
+class AutomationError(ConnectorError):
+    """Raised when an automation job fails to execute."""
+
+
 class EmptyMeetingError(ValidationError):
     """Raised when a meeting contains no utterances."""
 
@@ -78,6 +102,9 @@ class InvalidSpeakerError(ValidationError):
 
 
 __all__ = [
+    "AutomationError",
+    "ConnectorError",
+    "ConnectorValidationError",
     "DuplicateMeetingError",
     "DuplicateTimestampError",
     "EmptyMeetingError",
@@ -90,9 +117,12 @@ __all__ = [
     "MeetingNotFoundError",
     "MemoryNotFoundError",
     "NodeNotFoundError",
+    "PipelineConfigError",
+    "ScheduleError",
     "StorageError",
     "TranscriptLoadError",
     "TranscriptParseError",
+    "UnknownConnectorError",
     "UnsupportedFormatError",
     "ValidationError",
 ]
