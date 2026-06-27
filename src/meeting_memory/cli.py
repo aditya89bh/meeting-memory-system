@@ -298,6 +298,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_intelligence_commands(subcommands)
     _add_connector_commands(subcommands)
     _add_ops_commands(subcommands)
+    _add_demo_command(subcommands)
     return parser
 
 
@@ -1284,6 +1285,136 @@ def _positive_int(value: str) -> int:
     if number < 1:
         raise argparse.ArgumentTypeError("value must be >= 1")
     return number
+
+
+def _add_demo_command(subcommands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    """Register the guided end-to-end ``demo`` subcommand."""
+    demo_cmd = subcommands.add_parser(
+        "demo",
+        help="Run a guided, end-to-end demonstration of the whole system.",
+        description=(
+            "Import example meetings, build memory, search, build the graph, "
+            "generate intelligence, and render a report — all in under a minute."
+        ),
+    )
+    demo_cmd.add_argument(
+        "--db",
+        type=Path,
+        default=None,
+        help="Database path (default: a temporary database that is discarded).",
+    )
+    demo_cmd.add_argument(
+        "--dataset",
+        choices=sorted(DATASET_PRESETS),
+        default="small",
+        help="Example dataset to import (default: small).",
+    )
+    demo_cmd.add_argument(
+        "--query",
+        default="risk",
+        help="Search query to demonstrate retrieval (default: 'risk').",
+    )
+    demo_cmd.add_argument(
+        "--keep",
+        action="store_true",
+        help="Keep the generated database instead of discarding it.",
+    )
+    demo_cmd.set_defaults(handler=_handle_demo)
+
+
+def _demo_step(number: int, title: str) -> None:
+    """Print a numbered demo section header."""
+    print()
+    print(f"[{number}/6] {title}")
+    print("-" * 60)
+
+
+def _run_demo(db: Path, dataset: str, query: str) -> None:
+    """Execute the end-to-end demo flow against ``db``."""
+    spec = get_preset(dataset)
+
+    _demo_step(1, "Import example meetings")
+    with tempfile.TemporaryDirectory(prefix="mm-demo-") as tmp:
+        data_dir = Path(tmp) / "history"
+        write_dataset(spec, data_dir)
+        result = MeetingService(db).import_path(data_dir, recursive=True)
+    print(
+        f"Imported {result.meetings_imported} meetings and stored "
+        f"{result.memories_stored} memories from the '{spec.name}' dataset."
+    )
+
+    _demo_step(2, "Build organizational memory")
+    stats = MeetingService(db).stats()
+    print(f"Stored memory now spans {stats.meetings} meetings / {stats.memories} memories:")
+    for memory_type in sorted(stats.by_type):
+        print(f"  {memory_type:<12} {stats.by_type[memory_type]}")
+
+    _demo_step(3, "Retrieve memories")
+    search = RetrievalService(db).search(RetrievalQuery(text=query, limit=3))
+    print(f"Top matches for {query!r}:")
+    for ranked in search.ranked[:3]:
+        speaker = ranked.memory.speaker or "?"
+        print(
+            f"  ({ranked.score:.3f}) [{ranked.memory.memory_type}] "
+            f"{speaker}: {ranked.memory.text}"
+        )
+
+    _demo_step(4, "Build the organizational graph")
+    summary = GraphService(db).summary()
+    print(f"Graph: {summary.nodes} nodes, {summary.edges} edges.")
+    for node_type in sorted(summary.by_node_type):
+        print(f"  {node_type:<14} {summary.by_node_type[node_type]}")
+
+    _demo_step(5, "Generate intelligence")
+    report = IntelligenceService(db).report(AnalysisFilters())
+    print(f"Overall health: {report.health.overall:.3f}")
+    print(f"Discovered {len(report.insights)} insights:")
+    for insight in list(report.insights)[:3]:
+        print(f"  [{insight.severity}] {insight.title}")
+    for recommendation in list(report.recommendations)[:1]:
+        print(f"Top recommendation: {recommendation.title}")
+
+    _demo_step(6, "Render a report")
+    rendered = IntelligenceService(db).render(report, "markdown")
+    preview = rendered.strip().splitlines()
+    for line in preview[:8]:
+        print(f"  {line}")
+    print(f"  ... ({len(preview)} total lines)")
+
+
+def _handle_demo(args: argparse.Namespace) -> int:
+    """Execute the ``demo`` subcommand."""
+    start = time.perf_counter()
+    print("=" * 60)
+    print("  Meeting Memory System — guided demo")
+    print("=" * 60)
+
+    if args.db is not None:
+        _run_demo(args.db, args.dataset, args.query)
+        database = args.db
+    else:
+        with tempfile.TemporaryDirectory(prefix="mm-demo-db-") as tmp:
+            database = Path(tmp) / "demo.db"
+            _run_demo(database, args.dataset, args.query)
+            if args.keep:
+                kept = Path.cwd() / "demo.db"
+                kept.write_bytes(database.read_bytes())
+                database = kept
+
+    elapsed = time.perf_counter() - start
+    print()
+    print("=" * 60)
+    print(f"Demo complete in {elapsed:.2f}s.")
+    if args.db is not None or args.keep:
+        print(f"Explore the data with: meeting-memory report --db {database}")
+        print(f"Serve the API + dashboard: MEETING_MEMORY_DB={database} \\")
+        print("    uvicorn meeting_memory.api.app:app --port 8000")
+        print("Then open http://127.0.0.1:8000/dashboard and http://127.0.0.1:8000/docs")
+    else:
+        print("Re-run with --keep to persist the database and explore the API/dashboard:")
+        print("  meeting-memory demo --keep")
+    print("=" * 60)
+    return 0
 
 
 def _add_ops_commands(subcommands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
