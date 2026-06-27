@@ -14,6 +14,7 @@ from datetime import datetime
 from ..extraction.models import ExtractionResult
 from ..models import Meeting
 from .base import MemoryStore
+from .dedup import filter_duplicates
 from .models import MemoryStatus, StoredMeeting, StoredMemory
 
 
@@ -23,11 +24,17 @@ class PersistResult:
 
     meeting: StoredMeeting
     stored: tuple[StoredMemory, ...]
+    skipped: tuple[StoredMemory, ...] = ()
 
     @property
     def stored_count(self) -> int:
         """Number of memories written to the store."""
         return len(self.stored)
+
+    @property
+    def skipped_count(self) -> int:
+        """Number of candidate memories skipped as duplicates."""
+        return len(self.skipped)
 
 
 def persist_extraction(
@@ -38,12 +45,16 @@ def persist_extraction(
     transcript_hash: str,
     created_at: datetime,
     status: MemoryStatus = MemoryStatus.ACTIVE,
+    deduplicate: bool = True,
+    dedup_threshold: float = 1.0,
 ) -> PersistResult:
-    """Persist a meeting and all of its extracted memories.
+    """Persist a meeting and its extracted memories.
 
     The meeting is registered first so memory foreign keys resolve. Every memory
     is stored with the given ``status`` (``ACTIVE`` by default) and stamped with
-    ``created_at`` for reproducible timestamps.
+    ``created_at`` for reproducible timestamps. When ``deduplicate`` is set,
+    memories that duplicate one already present in the meeting (within
+    ``dedup_threshold`` confidence) are skipped.
     """
     stored_meeting = StoredMeeting.from_meeting(
         meeting,
@@ -53,9 +64,16 @@ def persist_extraction(
     )
     store.save_meeting(stored_meeting)
 
-    stored_memories = tuple(
+    candidates = tuple(
         StoredMemory.from_extracted(memory, created_at=created_at, status=status)
         for memory in result.memories
     )
-    store.save_many(stored_memories)
-    return PersistResult(meeting=stored_meeting, stored=stored_memories)
+    if deduplicate:
+        to_store, skipped = filter_duplicates(
+            store, result.meeting_id, candidates, threshold=dedup_threshold
+        )
+    else:
+        to_store, skipped = candidates, ()
+
+    store.save_many(to_store)
+    return PersistResult(meeting=stored_meeting, stored=to_store, skipped=skipped)

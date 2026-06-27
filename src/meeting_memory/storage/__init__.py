@@ -12,6 +12,7 @@ The layer is intentionally simple and dependency-free: standard-library
 from __future__ import annotations
 
 from .base import MemoryStore
+from .dedup import filter_duplicates, is_duplicate
 from .hashing import memory_content_hash, transcript_hash
 from .importer import ImportResult, import_meeting
 from .migrations import SCHEMA_VERSION
@@ -36,7 +37,9 @@ __all__ = [
     "StoredEvidence",
     "StoredMeeting",
     "StoredMemory",
+    "filter_duplicates",
     "import_meeting",
+    "is_duplicate",
     "memory_content_hash",
     "persist_extraction",
     "transcript_hash",

@@ -67,6 +67,8 @@ def import_meeting(
     config: ExtractionConfig | None = None,
     now: datetime | None = None,
     status: MemoryStatus = MemoryStatus.ACTIVE,
+    deduplicate: bool = True,
+    dedup_threshold: float = 1.0,
 ) -> ImportResult:
     """Import a transcript file into ``store`` and return a summary."""
     source = Path(path)
@@ -90,6 +92,8 @@ def import_meeting(
             transcript_hash=digest,
             created_at=created_at,
             status=status,
+            deduplicate=deduplicate,
+            dedup_threshold=dedup_threshold,
         )
     except DuplicateMeetingError:
         existing = store.get_meeting(result.meeting_id)
@@ -100,6 +104,7 @@ def import_meeting(
         meeting=persisted.meeting,
         stored_count=persisted.stored_count,
         counts=counts,
+        skipped_duplicates=persisted.skipped_count,
     )
 
 
