@@ -1,0 +1,210 @@
+{
+  "meeting_id": "customer_feedback_call",
+  "meeting": {
+    "title": "Customer Feedback Call - Acme Corp",
+    "date": "2026-01-14",
+    "source_path": "examples/customer_feedback_call.txt",
+    "source_format": "txt",
+    "extra": {
+      "account": "Acme Corp"
+    }
+  },
+  "total": 9,
+  "counts": {
+    "commitment": 3,
+    "open_loop": 1,
+    "risk": 1,
+    "question": 2,
+    "fact": 2
+  },
+  "memories": {
+    "commitment": [
+      {
+        "memory_id": "customer_feedback_call:commitment:3",
+        "memory_type": "commitment",
+        "text": "I will escalate the export performance issue to engineering by Monday.",
+        "speaker": "Jordan",
+        "meeting_id": "customer_feedback_call",
+        "utterance_index": 3,
+        "evidence": {
+          "utterance_index": 3,
+          "start": 0,
+          "end": 6,
+          "text": "I will"
+        },
+        "confidence": 0.95,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "I will"
+        },
+        "owner": "Jordan",
+        "due": "by Monday"
+      },
+      {
+        "memory_id": "customer_feedback_call:commitment:5",
+        "memory_type": "commitment",
+        "text": "Can you share the list of identity providers you use?",
+        "speaker": "Jordan",
+        "meeting_id": "customer_feedback_call",
+        "utterance_index": 5,
+        "evidence": {
+          "utterance_index": 5,
+          "start": 0,
+          "end": 7,
+          "text": "Can you"
+        },
+        "confidence": 0.6,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "Can you"
+        },
+        "owner": null,
+        "due": null
+      },
+      {
+        "memory_id": "customer_feedback_call:commitment:7",
+        "memory_type": "commitment",
+        "text": "We will follow up on the compliance timeline next week.",
+        "speaker": "Jordan",
+        "meeting_id": "customer_feedback_call",
+        "utterance_index": 7,
+        "evidence": {
+          "utterance_index": 7,
+          "start": 0,
+          "end": 7,
+          "text": "We will"
+        },
+        "confidence": 0.6,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "We will"
+        },
+        "owner": null,
+        "due": null
+      }
+    ],
+    "open_loop": [
+      {
+        "memory_id": "customer_feedback_call:open_loop:7",
+        "memory_type": "open_loop",
+        "text": "We will follow up on the compliance timeline next week.",
+        "speaker": "Jordan",
+        "meeting_id": "customer_feedback_call",
+        "utterance_index": 7,
+        "evidence": {
+          "utterance_index": 7,
+          "start": 8,
+          "end": 17,
+          "text": "follow up"
+        },
+        "confidence": 0.75,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "follow up"
+        }
+      }
+    ],
+    "risk": [
+      {
+        "memory_id": "customer_feedback_call:risk:4",
+        "memory_type": "risk",
+        "text": "A blocker for us is the lack of SSO support.",
+        "speaker": "Casey",
+        "meeting_id": "customer_feedback_call",
+        "utterance_index": 4,
+        "evidence": {
+          "utterance_index": 4,
+          "start": 2,
+          "end": 9,
+          "text": "blocker"
+        },
+        "confidence": 0.85,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "blocker"
+        }
+      }
+    ],
+    "question": [
+      {
+        "memory_id": "customer_feedback_call:question:5",
+        "memory_type": "question",
+        "text": "Can you share the list of identity providers you use?",
+        "speaker": "Jordan",
+        "meeting_id": "customer_feedback_call",
+        "utterance_index": 5,
+        "evidence": {
+          "utterance_index": 5,
+          "start": 0,
+          "end": 53,
+          "text": "Can you share the list of identity providers you use?"
+        },
+        "confidence": 0.95,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "?"
+        }
+      },
+      {
+        "memory_id": "customer_feedback_call:question:8",
+        "memory_type": "question",
+        "text": "Will the mobile app be ready this year?",
+        "speaker": "Casey",
+        "meeting_id": "customer_feedback_call",
+        "utterance_index": 8,
+        "evidence": {
+          "utterance_index": 8,
+          "start": 0,
+          "end": 39,
+          "text": "Will the mobile app be ready this year?"
+        },
+        "confidence": 0.95,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "?"
+        }
+      }
+    ],
+    "fact": [
+      {
+        "memory_id": "customer_feedback_call:fact:0",
+        "memory_type": "fact",
+        "text": "Thanks for joining, we would love your feedback on the latest release.",
+        "speaker": "Jordan",
+        "meeting_id": "customer_feedback_call",
+        "utterance_index": 0,
+        "evidence": {
+          "utterance_index": 0,
+          "start": 62,
+          "end": 69,
+          "text": "release"
+        },
+        "confidence": 0.6,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "release"
+        }
+      },
+      {
+        "memory_id": "customer_feedback_call:fact:7",
+        "memory_type": "fact",
+        "text": "We will follow up on the compliance timeline next week.",
+        "speaker": "Jordan",
+        "meeting_id": "customer_feedback_call",
+        "utterance_index": 7,
+        "evidence": {
+          "utterance_index": 7,
+          "start": 36,
+          "end": 44,
+          "text": "timeline"
+        },
+        "confidence": 0.6,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "timeline"
+        }
+      }
+    ]
+  },
+  "warnings": []
+}

@@ -1,0 +1,210 @@
+{
+  "meeting_id": "product_design_review",
+  "meeting": {
+    "title": "Product Design Review",
+    "date": "2026-01-13",
+    "source_path": "examples/product_design_review.txt",
+    "source_format": "txt",
+    "extra": {}
+  },
+  "total": 9,
+  "counts": {
+    "decision": 2,
+    "commitment": 1,
+    "open_loop": 1,
+    "risk": 1,
+    "assumption": 1,
+    "question": 1,
+    "fact": 2
+  },
+  "memories": {
+    "decision": [
+      {
+        "memory_id": "product_design_review:decision:1",
+        "memory_type": "decision",
+        "text": "The decision is to adopt the card-based layout.",
+        "speaker": "Sam",
+        "meeting_id": "product_design_review",
+        "utterance_index": 1,
+        "evidence": {
+          "utterance_index": 1,
+          "start": 0,
+          "end": 15,
+          "text": "The decision is"
+        },
+        "confidence": 0.85,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "The decision is"
+        }
+      },
+      {
+        "memory_id": "product_design_review:decision:8",
+        "memory_type": "decision",
+        "text": "Approved, let's ship the layout change.",
+        "speaker": "Sam",
+        "meeting_id": "product_design_review",
+        "utterance_index": 8,
+        "evidence": {
+          "utterance_index": 8,
+          "start": 0,
+          "end": 8,
+          "text": "Approved"
+        },
+        "confidence": 0.85,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "Approved"
+        }
+      }
+    ],
+    "commitment": [
+      {
+        "memory_id": "product_design_review:commitment:2",
+        "memory_type": "commitment",
+        "text": "I'll prepare the updated mockups before next meeting.",
+        "speaker": "Dana",
+        "meeting_id": "product_design_review",
+        "utterance_index": 2,
+        "evidence": {
+          "utterance_index": 2,
+          "start": 0,
+          "end": 4,
+          "text": "I'll"
+        },
+        "confidence": 0.95,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "I'll"
+        },
+        "owner": "Dana",
+        "due": "before next meeting"
+      }
+    ],
+    "open_loop": [
+      {
+        "memory_id": "product_design_review:open_loop:7",
+        "memory_type": "open_loop",
+        "text": "The color contrast issue is unresolved, TBD after the audit.",
+        "speaker": "Dana",
+        "meeting_id": "product_design_review",
+        "utterance_index": 7,
+        "evidence": {
+          "utterance_index": 7,
+          "start": 28,
+          "end": 38,
+          "text": "unresolved"
+        },
+        "confidence": 0.85,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "unresolved"
+        }
+      }
+    ],
+    "risk": [
+      {
+        "memory_id": "product_design_review:risk:3",
+        "memory_type": "risk",
+        "text": "I am concerned the data table will be a performance bottleneck.",
+        "speaker": "Dana",
+        "meeting_id": "product_design_review",
+        "utterance_index": 3,
+        "evidence": {
+          "utterance_index": 3,
+          "start": 5,
+          "end": 14,
+          "text": "concerned"
+        },
+        "confidence": 0.75,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "concerned"
+        }
+      }
+    ],
+    "assumption": [
+      {
+        "memory_id": "product_design_review:assumption:5",
+        "memory_type": "assumption",
+        "text": "We assume most users are on desktop, based on the assumption that mobile traffic stays low.",
+        "speaker": "Sam",
+        "meeting_id": "product_design_review",
+        "utterance_index": 5,
+        "evidence": {
+          "utterance_index": 5,
+          "start": 37,
+          "end": 60,
+          "text": "based on the assumption"
+        },
+        "confidence": 0.95,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "based on the assumption"
+        }
+      }
+    ],
+    "question": [
+      {
+        "memory_id": "product_design_review:question:4",
+        "memory_type": "question",
+        "text": "Should we support dark mode in v1?",
+        "speaker": "Ravi",
+        "meeting_id": "product_design_review",
+        "utterance_index": 4,
+        "evidence": {
+          "utterance_index": 4,
+          "start": 0,
+          "end": 34,
+          "text": "Should we support dark mode in v1?"
+        },
+        "confidence": 0.95,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "?"
+        }
+      }
+    ],
+    "fact": [
+      {
+        "memory_id": "product_design_review:fact:5",
+        "memory_type": "fact",
+        "text": "We assume most users are on desktop, based on the assumption that mobile traffic stays low.",
+        "speaker": "Sam",
+        "meeting_id": "product_design_review",
+        "utterance_index": 5,
+        "evidence": {
+          "utterance_index": 5,
+          "start": 15,
+          "end": 20,
+          "text": "users"
+        },
+        "confidence": 0.6,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "users"
+        }
+      },
+      {
+        "memory_id": "product_design_review:fact:6",
+        "memory_type": "fact",
+        "text": "Accessibility compliance is a hard requirement for enterprise customers.",
+        "speaker": "Ravi",
+        "meeting_id": "product_design_review",
+        "utterance_index": 6,
+        "evidence": {
+          "utterance_index": 6,
+          "start": 35,
+          "end": 46,
+          "text": "requirement"
+        },
+        "confidence": 0.6,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "requirement"
+        }
+      }
+    ]
+  },
+  "warnings": []
+}

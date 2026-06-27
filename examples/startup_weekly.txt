@@ -1,0 +1,14 @@
+---
+title: Startup Weekly Sync
+date: 2026-01-12
+team: Founders
+---
+[00:00:05] Priya: Welcome everyone, let's get through the weekly update.
+[00:00:20] Priya: We decided to move the launch to February 3rd.
+[00:00:35] Marco: I will finalize the pricing page by Friday.
+[00:00:50] Marco: There is a risk that the payment provider integration might fail under load.
+[00:01:10] Lena: Can we get a security review before the launch?
+[00:01:25] Priya: Assuming the new hire starts on time, we should have enough bandwidth.
+[00:01:40] Lena: The onboarding flow is still pending and needs to be confirmed with design.
+[00:01:55] Marco: Our largest customer accounts for 40% of revenue this quarter.
+[00:02:10] Priya: Let's go with the gradual rollout plan, that is the final call.

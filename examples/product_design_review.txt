@@ -1,0 +1,13 @@
+---
+title: Product Design Review
+date: 2026-01-13
+---
+[00:00:00] Sam: Today we review the new dashboard design.
+[00:00:15] Sam: The decision is to adopt the card-based layout.
+[00:00:30] Dana: I'll prepare the updated mockups before next meeting.
+[00:00:45] Dana: I am concerned the data table will be a performance bottleneck.
+[00:01:00] Ravi: Should we support dark mode in v1?
+[00:01:15] Sam: We assume most users are on desktop, based on the assumption that mobile traffic stays low.
+[00:01:30] Ravi: Accessibility compliance is a hard requirement for enterprise customers.
+[00:01:45] Dana: The color contrast issue is unresolved, TBD after the audit.
+[00:02:00] Sam: Approved, let's ship the layout change.

@@ -1,0 +1,212 @@
+{
+  "meeting_id": "startup_weekly",
+  "meeting": {
+    "title": "Startup Weekly Sync",
+    "date": "2026-01-12",
+    "source_path": "examples/startup_weekly.txt",
+    "source_format": "txt",
+    "extra": {
+      "team": "Founders"
+    }
+  },
+  "total": 9,
+  "counts": {
+    "decision": 2,
+    "commitment": 1,
+    "open_loop": 1,
+    "risk": 1,
+    "assumption": 1,
+    "question": 1,
+    "fact": 2
+  },
+  "memories": {
+    "decision": [
+      {
+        "memory_id": "startup_weekly:decision:1",
+        "memory_type": "decision",
+        "text": "We decided to move the launch to February 3rd.",
+        "speaker": "Priya",
+        "meeting_id": "startup_weekly",
+        "utterance_index": 1,
+        "evidence": {
+          "utterance_index": 1,
+          "start": 0,
+          "end": 10,
+          "text": "We decided"
+        },
+        "confidence": 0.95,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "We decided"
+        }
+      },
+      {
+        "memory_id": "startup_weekly:decision:8",
+        "memory_type": "decision",
+        "text": "Let's go with the gradual rollout plan, that is the final call.",
+        "speaker": "Priya",
+        "meeting_id": "startup_weekly",
+        "utterance_index": 8,
+        "evidence": {
+          "utterance_index": 8,
+          "start": 0,
+          "end": 13,
+          "text": "Let's go with"
+        },
+        "confidence": 0.85,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "Let's go with"
+        }
+      }
+    ],
+    "commitment": [
+      {
+        "memory_id": "startup_weekly:commitment:2",
+        "memory_type": "commitment",
+        "text": "I will finalize the pricing page by Friday.",
+        "speaker": "Marco",
+        "meeting_id": "startup_weekly",
+        "utterance_index": 2,
+        "evidence": {
+          "utterance_index": 2,
+          "start": 0,
+          "end": 6,
+          "text": "I will"
+        },
+        "confidence": 0.95,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "I will"
+        },
+        "owner": "Marco",
+        "due": "by Friday"
+      }
+    ],
+    "open_loop": [
+      {
+        "memory_id": "startup_weekly:open_loop:6",
+        "memory_type": "open_loop",
+        "text": "The onboarding flow is still pending and needs to be confirmed with design.",
+        "speaker": "Lena",
+        "meeting_id": "startup_weekly",
+        "utterance_index": 6,
+        "evidence": {
+          "utterance_index": 6,
+          "start": 47,
+          "end": 62,
+          "text": "to be confirmed"
+        },
+        "confidence": 0.85,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "to be confirmed"
+        }
+      }
+    ],
+    "risk": [
+      {
+        "memory_id": "startup_weekly:risk:3",
+        "memory_type": "risk",
+        "text": "There is a risk that the payment provider integration might fail under load.",
+        "speaker": "Marco",
+        "meeting_id": "startup_weekly",
+        "utterance_index": 3,
+        "evidence": {
+          "utterance_index": 3,
+          "start": 54,
+          "end": 64,
+          "text": "might fail"
+        },
+        "confidence": 0.65,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "might fail"
+        }
+      }
+    ],
+    "assumption": [
+      {
+        "memory_id": "startup_weekly:assumption:5",
+        "memory_type": "assumption",
+        "text": "Assuming the new hire starts on time, we should have enough bandwidth.",
+        "speaker": "Priya",
+        "meeting_id": "startup_weekly",
+        "utterance_index": 5,
+        "evidence": {
+          "utterance_index": 5,
+          "start": 0,
+          "end": 8,
+          "text": "Assuming"
+        },
+        "confidence": 0.85,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "Assuming"
+        }
+      }
+    ],
+    "question": [
+      {
+        "memory_id": "startup_weekly:question:4",
+        "memory_type": "question",
+        "text": "Can we get a security review before the launch?",
+        "speaker": "Lena",
+        "meeting_id": "startup_weekly",
+        "utterance_index": 4,
+        "evidence": {
+          "utterance_index": 4,
+          "start": 0,
+          "end": 47,
+          "text": "Can we get a security review before the launch?"
+        },
+        "confidence": 0.95,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "?"
+        }
+      }
+    ],
+    "fact": [
+      {
+        "memory_id": "startup_weekly:fact:1",
+        "memory_type": "fact",
+        "text": "We decided to move the launch to February 3rd.",
+        "speaker": "Priya",
+        "meeting_id": "startup_weekly",
+        "utterance_index": 1,
+        "evidence": {
+          "utterance_index": 1,
+          "start": 23,
+          "end": 29,
+          "text": "launch"
+        },
+        "confidence": 0.6,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "launch"
+        }
+      },
+      {
+        "memory_id": "startup_weekly:fact:7",
+        "memory_type": "fact",
+        "text": "Our largest customer accounts for 40% of revenue this quarter.",
+        "speaker": "Marco",
+        "meeting_id": "startup_weekly",
+        "utterance_index": 7,
+        "evidence": {
+          "utterance_index": 7,
+          "start": 12,
+          "end": 20,
+          "text": "customer"
+        },
+        "confidence": 0.75,
+        "extracted_at": "2026-01-15T09:00:00+00:00",
+        "metadata": {
+          "trigger": "customer"
+        }
+      }
+    ]
+  },
+  "warnings": []
+}

@@ -1,0 +1,14 @@
+---
+title: Customer Feedback Call - Acme Corp
+date: 2026-01-14
+account: Acme Corp
+---
+[00:00:05] Jordan: Thanks for joining, we would love your feedback on the latest release.
+[00:00:20] Casey: The new reporting feature is great, but exports are slow.
+[00:00:35] Casey: Our team processes about 50000 records per day.
+[00:00:50] Jordan: I will escalate the export performance issue to engineering by Monday.
+[00:01:05] Casey: A blocker for us is the lack of SSO support.
+[00:01:20] Jordan: Can you share the list of identity providers you use?
+[00:01:35] Casey: We need SOC 2 compliance before we can expand the contract.
+[00:01:50] Jordan: We will follow up on the compliance timeline next week.
+[00:02:05] Casey: Will the mobile app be ready this year?
