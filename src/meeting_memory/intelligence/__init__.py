@@ -12,8 +12,11 @@ pipeline.
 
 from __future__ import annotations
 
+from .commitment import commitment_insights, commitment_metrics
 from .context import AnalysisContext, AnalysisFilters, build_context, owner_of
+from .decision import decision_insights, decision_metrics
 from .engine import IntelligenceEngine
+from .health import meeting_metrics
 from .models import (
     PRIORITY_ORDER,
     SEVERITY_ORDER,
@@ -42,6 +45,7 @@ from .providers import (
     RecommendationProvider,
     ReportProvider,
 )
+from .recommendations import cadence_recommendation, recommendations_from
 from .registry import (
     ProviderSet,
     default_providers,
@@ -50,9 +54,18 @@ from .registry import (
     register_recommendation,
     register_report,
 )
+from .report import (
+    REPORT_FORMATS,
+    render_report,
+    to_json,
+    to_markdown,
+    to_text,
+)
+from .risk import risk_insights, risk_metrics
 
 __all__ = [
     "PRIORITY_ORDER",
+    "REPORT_FORMATS",
     "SEVERITY_ORDER",
     "AnalysisContext",
     "AnalysisFilters",
@@ -81,10 +94,23 @@ __all__ = [
     "ReportProvider",
     "RiskMetrics",
     "build_context",
+    "cadence_recommendation",
+    "commitment_insights",
+    "commitment_metrics",
+    "decision_insights",
+    "decision_metrics",
     "default_providers",
+    "meeting_metrics",
     "owner_of",
+    "recommendations_from",
     "register_insight",
     "register_metric",
     "register_recommendation",
     "register_report",
+    "render_report",
+    "risk_insights",
+    "risk_metrics",
+    "to_json",
+    "to_markdown",
+    "to_text",
 ]
