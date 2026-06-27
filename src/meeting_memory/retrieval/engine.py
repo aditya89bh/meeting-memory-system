@@ -17,6 +17,7 @@ from .models import (
     RetrievalStats,
 )
 from .planner import PlannerVocabulary, QueryPlanner
+from .ranking import RankingWeights, score_memory
 
 _ORDER_RELEVANCE = "relevance"
 _ORDER_CHRONOLOGICAL = "chronological"
@@ -26,16 +27,27 @@ _ORDER_REVERSE = "reverse-chronological"
 class MemoryRetriever:
     """Search the persistent memory store deterministically."""
 
-    def __init__(self, store: MemoryStore, *, planner: QueryPlanner | None = None) -> None:
+    def __init__(
+        self,
+        store: MemoryStore,
+        *,
+        planner: QueryPlanner | None = None,
+        weights: RankingWeights | None = None,
+    ) -> None:
         self._store = store
         self._planner = planner or QueryPlanner()
+        self._weights = weights or RankingWeights()
 
     def retrieve(self, query: RetrievalQuery) -> RetrievalResult:
         """Plan, filter, rank, order, and paginate a retrieval query."""
         meetings = {meeting.meeting_id: meeting for meeting in self._store.list_meetings()}
         applied = self._planner.plan(query, self._vocabulary(meetings))
         candidates = self._candidates(applied, meetings)
-        ranked = [self._rank(memory, meetings.get(memory.meeting_id)) for memory in candidates]
+        recency = _recency_map(candidates, meetings)
+        ranked = [
+            self._rank(memory, meetings.get(memory.meeting_id), applied, recency)
+            for memory in candidates
+        ]
         ranked = self._order(ranked, query.order)
         page = self._paginate(ranked, query.offset, query.limit)
         stats = RetrievalStats(
@@ -71,10 +83,23 @@ class MemoryRetriever:
             selected.append(memory)
         return selected
 
-    # -- ranking (deterministic base; enriched by the ranking module) ----------
+    # -- ranking ---------------------------------------------------------------
 
-    def _rank(self, memory: StoredMemory, meeting: StoredMeeting | None) -> RankedMemory:
-        return RankedMemory(memory=memory, score=memory.confidence, meeting=meeting)
+    def _rank(
+        self,
+        memory: StoredMemory,
+        meeting: StoredMeeting | None,
+        applied: RetrievalFilter,
+        recency: dict[str, float],
+    ) -> RankedMemory:
+        score = score_memory(
+            memory,
+            meeting,
+            applied,
+            recency=recency.get(memory.meeting_id, 1.0),
+            weights=self._weights,
+        )
+        return RankedMemory(memory=memory, score=score, meeting=meeting)
 
     # -- ordering and pagination -----------------------------------------------
 
@@ -103,6 +128,32 @@ class MemoryRetriever:
         if limit is None:
             return ranked[offset:]
         return ranked[offset : offset + limit]
+
+
+def _recency_map(
+    candidates: list[StoredMemory], meetings: dict[str, StoredMeeting]
+) -> dict[str, float]:
+    """Map each candidate meeting to a recency score in ``[0, 1]``.
+
+    Dates are ranked by position among the distinct candidate dates (oldest 0.0,
+    newest 1.0). Undated meetings score 0.0; if at most one distinct date exists,
+    recency is neutral (1.0) so it does not skew ranking.
+    """
+    distinct: set[str] = set()
+    for memory in candidates:
+        meeting = meetings.get(memory.meeting_id)
+        if meeting is not None and meeting.date:
+            distinct.add(meeting.date)
+    dates = sorted(distinct)
+    if len(dates) <= 1:
+        return {memory.meeting_id: 1.0 for memory in candidates}
+    position = {date: index / (len(dates) - 1) for index, date in enumerate(dates)}
+    recency: dict[str, float] = {}
+    for memory in candidates:
+        meeting = meetings.get(memory.meeting_id)
+        date = meeting.date if meeting else None
+        recency[memory.meeting_id] = position.get(date, 0.0) if date else 0.0
+    return recency
 
 
 def _searchable(memory: StoredMemory, meeting: StoredMeeting | None) -> str:

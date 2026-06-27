@@ -23,8 +23,10 @@ from .models import (
     RetrievalStats,
 )
 from .planner import PlannerVocabulary, QueryPlanner
+from .ranking import DEFAULT_WEIGHTS, RankingWeights, ScoreComponents, score_memory
 
 __all__ = [
+    "DEFAULT_WEIGHTS",
     "ContextUtterance",
     "ContextWindow",
     "ExplanationReason",
@@ -32,9 +34,12 @@ __all__ = [
     "PlannerVocabulary",
     "QueryPlanner",
     "RankedMemory",
+    "RankingWeights",
     "RetrievalExplanation",
     "RetrievalFilter",
     "RetrievalQuery",
     "RetrievalResult",
     "RetrievalStats",
+    "ScoreComponents",
+    "score_memory",
 ]
