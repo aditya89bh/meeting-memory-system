@@ -1,0 +1,16 @@
+---
+title: Westbridge Enrollment Review
+date: 2026-02-04
+team: Computer Science Department
+project: Curriculum Redesign
+---
+[00:00:05] Carter: Enrollment review before we finalize the program format.
+[00:00:15] Carter: We decided to make accreditation readiness the department's top priority.
+[00:00:25] Nguyen: There is a risk that low enrollment will jeopardize the program's accreditation review.
+[00:00:45] Nguyen: I will run a recruitment campaign with the feeder colleges by February 16th.
+[00:01:05] Carter: We decided to deliver the data science program in a hybrid in-person and online format.
+[00:01:25] Alvarez: The course sequence is drafted, but the assessment rubric is still pending.
+[00:01:45] Patel: Can we add evening sections to reach working students?
+[00:02:05] Carter: Assuming recruitment improves applications, the cohort launches in fall.
+[00:02:25] Patel: I will publish the advising plan for hybrid students by February 20th.
+[00:02:45] Carter: The final call is to keep all sections mapped to the same accreditation outcomes.

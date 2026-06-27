@@ -1,0 +1,16 @@
+---
+title: Northwind Aurora Kickoff
+date: 2026-01-06
+team: Founders
+project: Aurora MVP
+---
+[00:00:05] Priya: Welcome to the Aurora kickoff, let's set the plan for the MVP launch.
+[00:00:15] Priya: We decided to make a successful February beta the team's top priority.
+[00:00:25] Priya: We decided to launch Aurora with Stripe for payments in the first release.
+[00:00:45] Marco: I will build the checkout integration by January 17th.
+[00:01:05] Marco: There is a risk that the payment provider integration will fail under launch-day load.
+[00:01:25] Lena: Can we confirm the refund policy before we open signups?
+[00:01:45] Priya: Assuming our seed round closes on time, we can hire a second engineer in February.
+[00:02:05] Lena: The onboarding flow is still pending and needs a design owner.
+[00:02:25] Marco: Our pilot customer accounts for most of the early usage today.
+[00:02:45] Priya: The final call is to ship a private beta on February 3rd.

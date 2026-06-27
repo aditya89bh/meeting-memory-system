@@ -1,0 +1,15 @@
+---
+title: Lumen Enterprise Pilot Retro
+date: 2026-02-19
+team: Leadership
+project: Insights Platform
+---
+[00:00:05] Dana: Let's retro the enterprise pilot and lock plans for Q2.
+[00:00:25] Raj: Partitioning held latency under target, so the scaling risk is now mitigated.
+[00:00:45] Dana: We decided to migrate the analytics store to a managed Postgres service for Q2.
+[00:01:05] Sofia: Customer health scoring is now live and flagged two at-risk accounts early.
+[00:01:25] Omar: I will roll the SLA into all enterprise contracts by March 6th.
+[00:01:45] Sofia: Can we expand the success team before we sign three more enterprise deals?
+[00:02:05] Dana: Assuming the pilot converts, we will open two customer success roles in March.
+[00:02:25] Raj: There is a risk that the managed service migration will cause a maintenance window.
+[00:02:45] Dana: The final call is to schedule the migration during the next low-traffic weekend.

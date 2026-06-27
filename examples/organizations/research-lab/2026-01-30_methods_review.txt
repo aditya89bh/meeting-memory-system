@@ -1,0 +1,16 @@
+---
+title: Helix Methods Review
+date: 2026-01-30
+team: Helix Bio Lab
+project: Protein Folding Study
+---
+[00:00:05] Mara: Methods review before we commit to the full run schedule.
+[00:00:15] Mara: We decided to make reproducibility the lab's top priority for this study.
+[00:00:25] Yuki: There is a risk that reagent batch variability will make results hard to reproduce.
+[00:00:45] Yuki: I will validate two reagent lots against a reference standard by February 6th.
+[00:01:05] Mara: We decided to run the primary assay on the core facility instrument for better calibration.
+[00:01:25] Tomas: The protocol is finalized, but the analysis pipeline is still pending review.
+[00:01:45] Ben: Can we budget for a backup reagent supplier this year?
+[00:02:05] Mara: Assuming validation passes, full runs begin February 10th.
+[00:02:25] Tomas: I will publish the analysis pipeline with version pinning by February 9th.
+[00:02:45] Mara: The final call is to pre-register the analysis plan before unblinding any data.

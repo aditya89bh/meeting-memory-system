@@ -1,0 +1,16 @@
+---
+title: Northwind Aurora Planning
+date: 2026-01-20
+team: Founders
+project: Aurora MVP
+---
+[00:00:05] Priya: Quick sync on Aurora before the beta, where are we on payments?
+[00:00:15] Priya: We decided to make a successful February beta the team's top priority.
+[00:00:25] Marco: There is a risk that the payment provider integration will fail under launch-day load.
+[00:00:45] Marco: I will run a load test against the checkout flow by January 24th.
+[00:01:05] Priya: We decided to launch Aurora with Stripe and Adyen as a backup provider.
+[00:01:25] Lena: The onboarding flow is still pending and is now blocked on copy review.
+[00:01:45] Lena: Can we get a security review before we accept real cards?
+[00:02:05] Priya: Assuming the load test passes, the private beta stays on February 3rd.
+[00:02:25] Marco: I will document the failover runbook by January 28th.
+[00:02:45] Priya: The final call is to keep payments dual-provider for resilience.

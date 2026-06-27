@@ -1,0 +1,15 @@
+---
+title: Westbridge Accreditation Prep
+date: 2026-02-25
+team: Computer Science Department
+project: Curriculum Redesign
+---
+[00:00:05] Carter: Let's prepare for the accreditation site visit and confirm the launch plan.
+[00:00:25] Nguyen: The recruitment campaign lifted applications, so the enrollment risk is now mitigated.
+[00:00:45] Carter: We decided to launch the data science program with online evening cohorts plus on-campus labs.
+[00:01:05] Alvarez: The assessment rubric is now approved and mapped to every outcome.
+[00:01:25] Patel: I will compile the advising and retention report by March 10th.
+[00:01:45] Alvarez: Can we schedule a mock accreditation review before the official visit?
+[00:02:05] Carter: Assuming the mock review goes well, we submit the self-study in April.
+[00:02:25] Nguyen: There is a risk that the site visit scheduling will slip into final exams.
+[00:02:45] Carter: The final call is to lock the site visit date before the term calendar is published.

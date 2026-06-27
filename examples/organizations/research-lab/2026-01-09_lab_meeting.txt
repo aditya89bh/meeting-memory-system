@@ -1,0 +1,16 @@
+---
+title: Helix Lab Meeting
+date: 2026-01-09
+team: Helix Bio Lab
+project: Protein Folding Study
+---
+[00:00:05] Mara: Let's plan the folding study for the upcoming grant renewal.
+[00:00:15] Mara: We decided to make reproducibility the lab's top priority for this study.
+[00:00:25] Mara: We decided to run the primary assay on the in-house spectrometer first.
+[00:00:45] Tomas: I will finalize the experimental protocol by January 20th.
+[00:01:05] Yuki: There is a risk that reagent batch variability will make results hard to reproduce.
+[00:01:25] Ben: Can we lock the freezer inventory before we start the runs?
+[00:01:45] Mara: Assuming the grant is renewed, we can add a second postdoc in spring.
+[00:02:05] Tomas: The data analysis pipeline is still pending and needs a maintainer.
+[00:02:25] Yuki: Most of our prior results came from a single reagent supplier.
+[00:02:45] Mara: The final call is to require triplicate runs for every reported result.

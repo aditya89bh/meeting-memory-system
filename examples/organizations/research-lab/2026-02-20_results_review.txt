@@ -1,0 +1,15 @@
+---
+title: Helix Results Review
+date: 2026-02-20
+team: Helix Bio Lab
+project: Protein Folding Study
+---
+[00:00:05] Mara: Let's review the first batch of results and plan the manuscript.
+[00:00:25] Yuki: The reference validation passed, so the reproducibility risk is now mitigated.
+[00:00:45] Mara: We decided to run the confirmatory assay at two independent sites for the paper.
+[00:01:05] Tomas: The analysis pipeline is now published and fully version pinned.
+[00:01:25] Ben: I will onboard the backup reagent supplier by March 5th.
+[00:01:45] Yuki: Can we share the dataset openly once the manuscript is submitted?
+[00:02:05] Mara: Assuming the confirmatory runs agree, we submit the manuscript in April.
+[00:02:25] Tomas: There is a risk that instrument time at the second site will be limited.
+[00:02:45] Mara: The final call is to reserve external instrument time well before the deadline.

@@ -1,0 +1,15 @@
+---
+title: Orion Wave One Retro
+date: 2026-02-23
+team: Platform Engineering
+project: Orion Migration
+---
+[00:00:05] Helena: Let's retro wave one and set direction for the rest of the program.
+[00:00:25] Wei: Legal confirmed regional boundaries, so the data residency risk is now mitigated.
+[00:00:45] Helena: We decided to migrate the core services onto managed Kubernetes for the remaining waves.
+[00:01:05] Sam: The capacity model is now approved and finance signed off on the spend.
+[00:01:25] Diego: I will roll the automated rollback into the deploy pipeline by March 9th.
+[00:01:45] Sam: Can we standardize observability before we scale to ten more services?
+[00:02:05] Helena: Assuming wave two stays green, we will accelerate to two waves per month.
+[00:02:25] Diego: There is a risk that on-call load will spike as we add more services.
+[00:02:45] Helena: The final call is to fund a dedicated reliability rotation for the program.

@@ -1,0 +1,16 @@
+---
+title: Lumen Scaling Sync
+date: 2026-01-29
+team: Engineering
+project: Insights Platform
+---
+[00:00:05] Dana: Mid-quarter scaling sync, how is the migration tracking?
+[00:00:15] Dana: We decided to make platform reliability the company's top priority this year.
+[00:00:25] Raj: There is a risk that query latency will degrade as tenant data grows.
+[00:00:45] Raj: I will add read replicas and partition the largest tables by February 5th.
+[00:01:05] Dana: We decided to migrate the analytics store to Postgres with per-tenant partitioning.
+[00:01:25] Omar: The usage dashboard shipped, but alerting is still pending.
+[00:01:45] Sofia: Can we get an SLA commitment before the enterprise pilot signs?
+[00:02:05] Dana: Assuming partitioning holds latency under target, the pilot stays on track.
+[00:02:25] Omar: I will draft the SLA proposal by February 9th.
+[00:02:45] Dana: The final call is to commit to a 99.9% uptime target for enterprise tiers.

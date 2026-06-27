@@ -1,0 +1,16 @@
+---
+title: Lumen Growth Review
+date: 2026-01-08
+team: Leadership
+project: Insights Platform
+---
+[00:00:05] Dana: Let's review Q1 growth for the Insights Platform.
+[00:00:15] Dana: We decided to make platform reliability the company's top priority this year.
+[00:00:25] Dana: We decided to migrate the analytics store to a single Postgres cluster this quarter.
+[00:00:45] Raj: There is a risk that query latency will degrade as tenant data grows.
+[00:01:05] Omar: I will ship the new usage dashboard by January 22nd.
+[00:01:25] Sofia: Can we identify the top churn drivers before the renewal cycle?
+[00:01:45] Dana: Assuming the migration lands, we can onboard the enterprise pilot in February.
+[00:02:05] Sofia: The customer health scoring is still pending and needs a data owner.
+[00:02:25] Omar: Our top ten accounts represent over half of recurring revenue.
+[00:02:45] Dana: The final call is to prioritize reliability over new features this quarter.

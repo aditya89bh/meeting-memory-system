@@ -1,0 +1,16 @@
+---
+title: Orion Platform Program Review
+date: 2026-01-12
+team: Platform Engineering
+project: Orion Migration
+---
+[00:00:05] Helena: This is the Orion migration program review for the new fiscal year.
+[00:00:15] Helena: We decided to treat the cloud migration as the program's top priority.
+[00:00:25] Helena: We decided to migrate the core services with a lift-and-shift to the cloud first.
+[00:00:45] Wei: There is a risk that customer data residency requirements will block the migration.
+[00:01:05] Sam: I will produce the service dependency map by January 23rd.
+[00:01:25] Diego: Can we define rollback criteria before we touch production traffic?
+[00:01:45] Helena: Assuming the audit passes, we can begin the first wave in February.
+[00:02:05] Sam: The capacity model is still pending and needs sign-off from finance.
+[00:02:25] Wei: Two regulated customers drive most of the compliance scope.
+[00:02:45] Helena: The final call is to treat compliance as a release blocker for every wave.

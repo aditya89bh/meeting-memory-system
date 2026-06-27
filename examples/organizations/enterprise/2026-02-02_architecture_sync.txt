@@ -1,0 +1,16 @@
+---
+title: Orion Architecture Sync
+date: 2026-02-02
+team: Platform Engineering
+project: Orion Migration
+---
+[00:00:05] Helena: Architecture sync before wave one, what changed since the review?
+[00:00:15] Helena: We decided to treat the cloud migration as the program's top priority.
+[00:00:25] Wei: There is a risk that customer data residency requirements will block the migration.
+[00:00:45] Wei: I will confirm regional data boundaries with legal by February 11th.
+[00:01:05] Helena: We decided to migrate the core services into containers instead of a plain lift-and-shift.
+[00:01:25] Sam: The dependency map is done, but the capacity model is still pending.
+[00:01:45] Diego: Can we run a game day before the first production wave?
+[00:02:05] Helena: Assuming legal confirms residency, wave one starts February 16th.
+[00:02:25] Diego: I will script the automated rollback path by February 13th.
+[00:02:45] Helena: The final call is to containerize every service before any production cutover.

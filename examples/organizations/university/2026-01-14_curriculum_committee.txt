@@ -1,0 +1,16 @@
+---
+title: Westbridge Curriculum Committee
+date: 2026-01-14
+team: Computer Science Department
+project: Curriculum Redesign
+---
+[00:00:05] Carter: Welcome to the curriculum committee for the data science program redesign.
+[00:00:15] Carter: We decided to make accreditation readiness the department's top priority.
+[00:00:25] Carter: We decided to deliver the new data science program as an in-person cohort first.
+[00:00:45] Alvarez: I will draft the revised course sequence by January 26th.
+[00:01:05] Nguyen: There is a risk that low enrollment will jeopardize the program's accreditation review.
+[00:01:25] Patel: Can we confirm advising capacity before we expand the cohort size?
+[00:01:45] Carter: Assuming the budget passes, we can hire an adjunct for the lab sections.
+[00:02:05] Alvarez: The assessment rubric is still pending and needs faculty review.
+[00:02:25] Nguyen: Most applicants this year came from two feeder community colleges.
+[00:02:45] Carter: The final call is to align every course with the accreditation outcomes.

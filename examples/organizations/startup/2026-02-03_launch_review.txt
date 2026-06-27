@@ -1,0 +1,15 @@
+---
+title: Northwind Aurora Launch Review
+date: 2026-02-03
+team: Founders
+project: Aurora MVP
+---
+[00:00:05] Priya: Beta is live, let's review how the Aurora launch went.
+[00:00:25] Marco: The load test passed and the failover held, so the payment risk is now mitigated.
+[00:00:45] Priya: We decided to move Aurora from private beta to public launch on March 2nd.
+[00:01:05] Lena: The onboarding flow is now complete and shipped with the beta.
+[00:01:25] Marco: I will add usage analytics to the checkout flow by February 14th.
+[00:01:45] Lena: Can we revisit pricing once we see two weeks of real conversion data?
+[00:02:05] Priya: Assuming conversion holds above target, we will raise prices in April.
+[00:02:25] Marco: There is a risk that support volume will spike after the public launch.
+[00:02:45] Priya: The final call is to staff a part-time support rotation before March 2nd.
