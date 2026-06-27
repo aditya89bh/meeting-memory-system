@@ -10,7 +10,6 @@ analysis without hard-coding the list.
 from __future__ import annotations
 
 import importlib
-import importlib.util
 from dataclasses import dataclass, field
 from typing import TypeVar
 
@@ -90,9 +89,7 @@ def _sorted(providers: list[_P]) -> tuple[_P, ...]:
 def default_providers() -> ProviderSet:
     """Import the domain modules and return all registered providers, sorted."""
     for name in _PROVIDER_MODULES:
-        qualified = f"{__package__}.{name}"
-        if importlib.util.find_spec(qualified) is not None:
-            importlib.import_module(qualified)
+        importlib.import_module(f"{__package__}.{name}")
     return ProviderSet(
         insight=_sorted(_INSIGHT_PROVIDERS),
         metric=_sorted(_METRIC_PROVIDERS),
