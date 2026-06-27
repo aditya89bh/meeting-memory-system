@@ -327,7 +327,7 @@ def test_schema_version_and_indexes(tmp_path: Path) -> None:
     db = tmp_path / "nested" / "memory.db"
     store = SQLiteMemoryStore(db)
     version = store._connection.execute("PRAGMA user_version").fetchone()[0]
-    assert version == SCHEMA_VERSION == 1
+    assert version == SCHEMA_VERSION == 2
     index_names = {
         row[0]
         for row in store._connection.execute(
