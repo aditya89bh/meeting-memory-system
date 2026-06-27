@@ -12,6 +12,12 @@ schedulers, no network access, no credentials.
 
 from __future__ import annotations
 
+from .automation import (
+    AutomationEngine,
+    JobHistory,
+    JobRunner,
+    PipelineExecutor,
+)
 from .base import (
     AutomationConnector,
     Connector,
@@ -93,6 +99,7 @@ from .scheduler import (
 __all__ = [
     "ArchiveImportConnector",
     "AutomationConnector",
+    "AutomationEngine",
     "AutomationJob",
     "AutomationResult",
     "BatchImportConnector",
@@ -118,6 +125,8 @@ __all__ = [
     "ImportConnector",
     "ImportRequest",
     "ImportResult",
+    "JobHistory",
+    "JobRunner",
     "JsonExportConnector",
     "JsonImportConnector",
     "JsonlFileLogSink",
@@ -128,6 +137,7 @@ __all__ = [
     "MarkdownImportConnector",
     "MeetingSummaryExportConnector",
     "MemoryLogSink",
+    "PipelineExecutor",
     "RecursiveDirectoryImportConnector",
     "Schedule",
     "ScheduleFrequency",
