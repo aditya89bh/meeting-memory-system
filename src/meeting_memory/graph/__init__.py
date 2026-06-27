@@ -17,6 +17,7 @@ from .entities import (
     detect_entities,
     extract_entities,
 )
+from .linking import cross_meeting_edges
 from .models import (
     RELATIONSHIP_REGISTRY,
     EntityType,
@@ -48,6 +49,7 @@ __all__ = [
     "RelationshipType",
     "SQLiteGraphStore",
     "build_graph",
+    "cross_meeting_edges",
     "detect_entities",
     "extract_entities",
     "slugify",

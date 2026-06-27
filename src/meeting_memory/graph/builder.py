@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 from ..storage import MemoryStore, StoredMeeting, StoredMemory
 from .entities import DEFAULT_VOCABULARY, EntityVocabulary, extract_entities
+from .linking import MeetingRecord, MemoryRecord, cross_meeting_edges
 from .models import GraphEdge, GraphNode, RelationshipType
 from .relationships import meeting_relationships
 from .store import GraphStore
@@ -55,6 +56,8 @@ def build_graph(
     edges: dict[str, GraphEdge] = {}
     memory_node_index: dict[str, str] = {}
     all_memories: list[StoredMemory] = []
+    memory_records: list[MemoryRecord] = []
+    meeting_records: list[MeetingRecord] = []
 
     for meeting in memory_store.list_meetings():
         memories = memory_store.find_by_meeting(meeting.meeting_id)
@@ -68,7 +71,24 @@ def build_graph(
         for edge in meeting_relationships(meeting, memories, extraction):
             edges.setdefault(edge.edge_id, edge)
 
+        meeting_date = meeting.date or ""
+        meeting_records.append(
+            MeetingRecord(meeting.meeting_id, meeting_date, tuple(meeting.participants))
+        )
+        for memory in memories:
+            memory_records.append(
+                MemoryRecord(
+                    memory=memory,
+                    node_id=memory_node_index[memory.memory_id],
+                    meeting_date=meeting_date,
+                    entities=extraction.memory_mentions.get(memory.memory_id, frozenset()),
+                )
+            )
+
     for edge in _supersedes_edges(all_memories, memory_node_index):
+        edges.setdefault(edge.edge_id, edge)
+
+    for edge in cross_meeting_edges(memory_records, meeting_records):
         edges.setdefault(edge.edge_id, edge)
 
     nodes_added = graph_store.add_nodes(nodes[node_id] for node_id in sorted(nodes))
