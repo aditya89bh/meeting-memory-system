@@ -1,0 +1,14 @@
+---
+title: Project Atlas Kickoff
+date: 2026-02-02
+team: Platform
+---
+[00:00:05] Priya: Welcome to the Project Atlas kickoff, let's set direction.
+[00:00:20] Priya: We decided to build Atlas on PostgreSQL for the first release.
+[00:00:40] Marco: I will set up the staging environment by next Friday.
+[00:01:00] Marco: There is a risk that the vendor API rate limits will slow ingestion.
+[00:01:20] Lena: Can we confirm the data retention policy before we store anything?
+[00:01:40] Priya: Assuming the budget is approved, we can hire a second engineer.
+[00:02:00] Lena: The onboarding docs are still pending and need an owner.
+[00:02:20] Marco: Our pilot customer represents most of the early usage.
+[00:02:40] Priya: The final call is to ship a private beta in March.

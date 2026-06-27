@@ -1,0 +1,12 @@
+---
+title: Project Atlas Beta Review
+date: 2026-02-16
+team: Platform
+---
+[00:00:05] Priya: Let's review how the private beta is going.
+[00:00:25] Lena: We decided to extend the beta by two weeks based on feedback.
+[00:00:45] Marco: There is a risk that the vendor API rate limits will slow ingestion.
+[00:01:05] Marco: I will publish the migration runbook by Thursday.
+[00:01:25] Priya: Can we confirm the launch date with marketing?
+[00:01:45] Lena: The onboarding docs are now drafted but still need review.
+[00:02:05] Priya: Assuming no blockers, the public launch is the final call for March.
