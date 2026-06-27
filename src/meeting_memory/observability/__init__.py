@@ -20,14 +20,32 @@ from .metrics import (
     SystemMetrics,
     Timer,
 )
+from .profiling import (
+    CPUProfile,
+    MemoryProfile,
+    PipelineTimer,
+    PipelineTiming,
+    SlowQuery,
+    SlowQueryDetector,
+    profile_cpu,
+    profile_memory,
+)
 
 __all__ = [
+    "CPUProfile",
     "Counter",
     "Gauge",
     "HealthCheck",
     "HealthSnapshot",
     "Histogram",
+    "MemoryProfile",
     "MetricsCollector",
+    "PipelineTimer",
+    "PipelineTiming",
+    "SlowQuery",
+    "SlowQueryDetector",
     "SystemMetrics",
     "Timer",
+    "profile_cpu",
+    "profile_memory",
 ]
