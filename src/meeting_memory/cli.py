@@ -1361,8 +1361,7 @@ def _run_demo(db: Path, dataset: str, query: str) -> None:
     for ranked in search.ranked[:3]:
         speaker = ranked.memory.speaker or "?"
         print(
-            f"  ({ranked.score:.3f}) [{ranked.memory.memory_type}] "
-            f"{speaker}: {ranked.memory.text}"
+            f"  ({ranked.score:.3f}) [{ranked.memory.memory_type}] {speaker}: {ranked.memory.text}"
         )
 
     _demo_step(4, "Build the organizational graph")
