@@ -68,6 +68,6 @@ docker run --rm \
 ```
 
 A production-oriented compose file with image pinning and resource limits is provided in
-[`examples/ops/deployment/docker-compose.prod.yml`](../../examples/ops/deployment/docker-compose.prod.yml).
+[`examples/ops/deployment/docker-compose.prod.yml`](https://github.com/aditya89bh/meeting-memory-system/blob/main/examples/ops/deployment/docker-compose.prod.yml).
 
 Next: [Production deployment](production-deployment.md).

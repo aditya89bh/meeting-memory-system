@@ -89,5 +89,5 @@ See [`docs/performance.md`](../performance.md) for the full benchmarking guide a
 - [ ] Restore tested from a recent backup
 - [ ] Resource limits set (see the production compose example)
 
-See the [release checklist](../../RELEASE_CHECKLIST.md) before cutting a versioned
+See the [release checklist](https://github.com/aditya89bh/meeting-memory-system/blob/main/RELEASE_CHECKLIST.md) before cutting a versioned
 deployment.

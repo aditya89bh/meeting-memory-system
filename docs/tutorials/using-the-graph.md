@@ -47,7 +47,7 @@ meeting-memory export-graph --db lumen.db --format json > graph.json
 
 `--format` also supports `mermaid` and `dot` for direct rendering. The export contains
 nodes (with type and label) and typed edges, suitable for loading into graph viewers or
-notebooks. See [`notebooks/03_graph.ipynb`](../../notebooks/03_graph.ipynb)
+notebooks. See [`notebooks/03_graph.ipynb`](https://github.com/aditya89bh/meeting-memory-system/blob/main/notebooks/03_graph.ipynb)
 for an interactive walkthrough.
 
 Next: [Generating insights](generating-insights.md).

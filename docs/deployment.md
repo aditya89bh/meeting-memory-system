@@ -30,7 +30,7 @@ docker compose logs -f
 ```
 
 A production-oriented example that pins an image tag and adds resource limits
-lives at [`examples/ops/deployment/docker-compose.prod.yml`](../examples/ops/deployment/docker-compose.prod.yml):
+lives at [`examples/ops/deployment/docker-compose.prod.yml`](https://github.com/aditya89bh/meeting-memory-system/blob/main/examples/ops/deployment/docker-compose.prod.yml):
 
 ```bash
 docker compose -f examples/ops/deployment/docker-compose.prod.yml up -d

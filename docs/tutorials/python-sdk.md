@@ -71,7 +71,7 @@ with MeetingMemoryClient.local("atlas.db") as client:
 | `insights(...)`, `metrics(...)`, `recommendations(...)`, `report(fmt=...)` | Intelligence |
 | `run_pipeline(...)`, `jobs(...)`, `logs(...)` | Automation |
 
-See [`notebooks/05_sdk.ipynb`](../../notebooks/05_sdk.ipynb) for a runnable version of
+See [`notebooks/05_sdk.ipynb`](https://github.com/aditya89bh/meeting-memory-system/blob/main/notebooks/05_sdk.ipynb) for a runnable version of
 this tutorial.
 
 Next: [Docker deployment](docker-deployment.md).

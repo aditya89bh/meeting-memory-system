@@ -1,0 +1,96 @@
+site_name: Meeting Memory System
+site_description: >-
+  Deterministic, local-first system that turns meeting transcripts into queryable
+  institutional memory, an organizational graph, and intelligence reports.
+site_url: https://aditya89bh.github.io/meeting-memory-system/
+repo_url: https://github.com/aditya89bh/meeting-memory-system
+repo_name: aditya89bh/meeting-memory-system
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.instant
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+    - toc.follow
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Home: index.md
+  - Tutorials:
+      - Overview: tutorials/README.md
+      - Getting started: tutorials/getting-started.md
+      - Import meetings: tutorials/import-meetings.md
+      - Searching memory: tutorials/searching-memory.md
+      - Using the graph: tutorials/using-the-graph.md
+      - Generating insights: tutorials/generating-insights.md
+      - Running automation: tutorials/running-automation.md
+      - REST API: tutorials/rest-api.md
+      - Python SDK: tutorials/python-sdk.md
+      - Docker deployment: tutorials/docker-deployment.md
+      - Production deployment: tutorials/production-deployment.md
+  - Architecture:
+      - Overview: architecture.md
+      - Database schema: schema.md
+      - Storage: storage.md
+      - Extraction: extraction.md
+      - Retrieval: retrieval.md
+      - Graph: graph.md
+      - Intelligence: intelligence.md
+      - Connectors: connectors.md
+  - Reference:
+      - CLI: cli.md
+      - REST API: api.md
+      - Python SDK: sdk.md
+      - Dashboard: dashboard.md
+  - Examples:
+      - Case studies:
+          - Overview: case-studies/README.md
+          - Recurring project risks: case-studies/recurring-project-risks.md
+          - Decision reversals: case-studies/decision-reversals.md
+          - Knowledge reuse: case-studies/knowledge-reuse.md
+          - Engineering organization: case-studies/engineering-organization.md
+          - Startup operations: case-studies/startup-operations.md
+          - Customer support: case-studies/customer-support.md
+  - Operations:
+      - Deployment: deployment.md
+      - Performance: performance.md
+      - Benchmark charts: benchmarks.md
+      - Backup & recovery: backup.md
+      - Replay: replay.md

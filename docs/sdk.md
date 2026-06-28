@@ -84,7 +84,7 @@ with MeetingMemoryClient.local("atlas.db") as client:
     print(run["status"])
 ```
 
-The runnable version lives at [`examples/api/sdk_quickstart.py`](../examples/api/sdk_quickstart.py).
+The runnable version lives at [`examples/api/sdk_quickstart.py`](https://github.com/aditya89bh/meeting-memory-system/blob/main/examples/api/sdk_quickstart.py).
 
 ## HTTP mode example
 
@@ -96,7 +96,7 @@ with MeetingMemoryClient.connect("http://127.0.0.1:8000") as client:
     print(client.search("postgres")["stats"]["returned"])
 ```
 
-See [`examples/api/sdk_http.py`](../examples/api/sdk_http.py) (start a server with
+See [`examples/api/sdk_http.py`](https://github.com/aditya89bh/meeting-memory-system/blob/main/examples/api/sdk_http.py) (start a server with
 `examples/api/serve.py` first).
 
 ## Error handling
