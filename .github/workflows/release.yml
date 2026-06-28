@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install tooling
+        run: python -m pip install --upgrade pip build twine
+
+      - name: Run quality gates
+        run: |
+          pip install -e ".[dev]"
+          ruff check .
+          ruff format --check .
+          mypy src
+          pytest --cov
+
+      - name: Build distributions
+        run: python -m build
+
+      - name: Check distributions
+        run: twine check dist/*
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: dist/*
